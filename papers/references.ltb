@@ -1,0 +1,148 @@
+\documentclass{article}
+\usepackage{amsrefs}
+
+\begin{document}
+\begin{bibdiv}
+\begin{biblist}
+
+\bib{CarlssonTandD}{article}{
+author={Carlsson, G.},
+title={Topology and data},
+journal={Bulletin of The American Mathematical Society},
+volume={46},
+number={2},
+year={2009},
+pages={255--308}
+}
+
+\bib{RandomOrthogonalEmbeddings}{article}{
+author={Choromanski, K.},
+author={Rowland, M.},
+author={Weller, A.},
+title={The Unreasonable Effectiveness of Random Orthogonal Embeddings},
+eprint={arxiv.org/abs/1703.00864},
+year={2017},
+}
+
+\bib{algorithmic_foundations}{article}{
+author={Dwork C.},
+author={Roth A.},
+title={The Algorithmic Foundations of Differential Privacy},
+journal={Foundations and Trends in Theoretical Computer Science},
+volume={9},
+number={3--4},
+year={2014},
+pages={211--407},
+}
+
+\bib{factorization_machines}{article}{
+author={Rendle, Steffen},
+title={Factorization Machines},
+year={2010},
+}
+
+\bib{RPackageTDA}{article}{
+author={Fasy, B.},
+author={Kim, J.},
+author={Lecci, F.},
+author={Maria, C.},
+author={Rouvreau, V.},
+title={Introduction to the R package TDA},
+year={2014},
+}
+
+\bib{JLlemmaPaper}{book}{
+author={Johnson, W.},
+author={Lindenstrauss, J.},
+title={Extensions of Lipschitz mappings into a Hilbert space},
+booktitle={Conference in modern analysis and probability},
+publication={Contemporary Mathematics},
+volume={46},
+year={1984},
+pages={189--206}
+}
+
+\bib{introduction_to_probabilistic_graphical_models}{book}{
+author={Jordan, M. I.},
+title={An Introduction to Probabilistic Graphical Models},
+}
+
+\bib{TDAofAyasdi}{article}{
+author={Kim, H. E.},
+title={Evaluating Ayasdi's topological data analysis for big data},
+year={2015},
+}
+
+\bib{verysparserandomprojections}{book}{
+publisher={Association for Computing Machinery},
+author={Li, P.},
+author={Hastie, T.},
+author={Church, K.},
+title={Very sparse random projections},
+booktitle={Proceedings of the 12th {ACM} {SIGKDD} international conference on Knowledge discovery and data mining}
+year={2006},
+}
+
+\bib{PythonMapper}{article}{
+author={M\"{u}ller, D.},
+title={Python Mapper documentation},
+eprint={danifold.net/mapper}
+}
+
+\bib{LowRankDecompositionDimensionReduction}{article}{
+author={Nguyen, D.},
+author={Wojnowicz, M.},
+author={Li, L.},
+author={Zhao, X.},
+title={Low Rank Decomposition and Dimension Reduction},
+}
+
+\bib{TDAmapper}{article}{
+author={Pearson, P.},
+title={TDAmapper documentation},
+eprint={github.com/paultpearson/TDAmapper}
+}
+
+\bib{ALM}{article}{
+author={Phan, H. N.},
+author={Wu, X.},
+author={Hu, H.},
+author={Dou, D.},
+title={Adaptive Laplace Mechanism: Differential Privacy Preservation in Deep Learning},
+booktitle={2017 ICDM}
+}
+
+\bib{DIPHA}{article}{
+author={Reininghaus, J.},
+title={A distributed persistent homology algorithm},
+eprint={github.com/DIPHA/dipha}
+}
+
+\bib{LSPCA}{article}{
+author={Wojnowicz, M.},
+author={Nguyen, D.},
+author={Li, L.},
+author={Zhao, X.},
+title={Lazy Stochastic Principal Component Analysis},
+booktitle={2017 ICDM Workshop on High Dimensional Data Mining}
+}
+
+\bib{BoPF}{article}{
+author={Li, X.},
+author={Lin, J.},
+title={Linear Time Complexity Time Series Classification with Bag-of-Pattern Features},
+booktitle={2017 ICDM}
+}
+
+\bib{SBP}{article}{
+author={Yoo, J.},
+author={Jo, S.},
+author={Kang, U.},
+title={Supervised Belief Propagation: Scalable Supervised Inference on Attributed Networks},
+booktitle={2017 ICDM}
+}
+
+\end{biblist}
+\end{bibdiv}
+
+\end{document}

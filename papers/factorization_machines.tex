@@ -1,0 +1,308 @@
+\documentclass[14pt, reqno]{amsart}
+
+\usepackage{amsmath, amssymb, bm, amsrefs}
+\usepackage{diagrams}
+\usepackage{enumerate}
+\usepackage{extsizes}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\setlength{\textwidth}{16cm} \setlength{\textheight}{22cm}
+\setlength{\oddsidemargin}{0cm} \setlength{\topmargin}{0cm}
+\setlength{\evensidemargin}{0cm} \setlength{\topmargin}{0cm}
+
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{dfn}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Factorization Machines}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+Dinh Huu Nguyen, 09/22/2020
+\end{center}
+
+Abstract: what is learned from \cite{factorization_machines}
+\vspace{20pt}
+
+\tableofcontents
+
+\section{Symbols and terms}
+ \begin{tabular}{l l}
+$l$ & number of factors, with index $i$ \\
+$m$ & number of features, with index $j$ \\
+$n$ & number of samples, with index $k$ \\
+$X$ & dataset of samples $x$ \\
+$Y$ & dataset of labels $y$ \\
+\end{tabular}
+
+\vfill
+\pagebreak
+
+\section{Modeling} Consider dataset $X$ of $n$ samples $x_1, \dots , x_n$ and $m$ features $X_1, \dots, X_m$
+\vspace{10pt}
+\begin{center}
+\begin{tabular}{c | c c c | c}
+$X$ & $X_1$ & $\dots$ & $X_m$ & $Y$ \\
+\hline
+$x_1$ & $x_{11}$ & $\dots$ & $x_{1m}$ & $y_1$ \\
+$\vdots$ & $\vdots$ & $\ddots$ & $\vdots$ & $\vdots$ \\
+$x_n$ & $x_{n1}$ & $\dots$ & $x_{nm}$ & $y_n$ \\
+\end{tabular}
+\end{center}
+\vspace{10pt}
+
+\vfill
+\pagebreak
+
+\subsection{Degree-$2$ interaction} Model equation to model degree-$2$ interaction between features is
+\begin{equation}\label{degree_2_model_equation}
+\begin{split}
+\hat{y}(x) & = w^0 \\
+ & \,\,\,\,\, + x_1 w_1^1 + \dots + x_m w_m^1 \\
+ & \,\,\,\,\, + x_1 x_2 \langle w_1^2, w_2^2 \rangle + \dots + x_{m-1} x_m \langle w_{m-1}^2, w_m^2 \rangle \\
+ & = w^0 +  \langle x, w^1 \rangle + \sum\limits_{j_1 < j_2} x_{j_1} x_{j_2} \langle w_{j_1}^2, w_{j_2}^2 \rangle
+\end{split}
+\end{equation}
+where
+\begin{itemize}
+\item $w^0 \in \mathbb{R}$ is global bias
+\item $w^1 = (w_1^1, \dots, w_m^1) \in \mathbb{R}^m$ is bias vector and each $w_j^1$ is bias for feature $X_j$
+\item $w_j^2 \in \mathbb{R}^l$ are factor vectors and each $w_j^2$ is factor vector for feature $X_j$
+\end{itemize}
+
+Or in matrix form
+\begin{equation}\label{degree_2_model_equation_in_matrix_form}
+\hat{y}(x) = w^0 + \langle x, w^1 \rangle + x^t W^2 x
+\end{equation}
+where
+\begin{itemize}
+\item $W^2 = \left( \begin{array}{ccccc}
+0 & \langle w_1^2, w_2^2 \rangle & \langle w_1^2, w_3^2 \rangle & \dots & \langle w_1^2, w_m^2 \rangle \\
+0 & 0 & \langle w_2^2, w_3^2 \rangle & \dots & \langle w_2^2, w_m^2 \rangle \\
+\vdots & \ddots & \ddots & \ddots & \vdots \\
+0 & \dots & \dots & \dots & \langle w_{m-1}^2, w_m^2 \rangle \\
+0 & \dots & \dots & \dots & 0 \\
+\end{array} \right)$ is upper triangular interaction matrix and each $\langle w_{j_1}^2, w_{j_2}^2 \rangle$ is interaction between feature $X_{j_1}$ and feature $X_{j_2}$
+\end{itemize}
+
+Note that this is different from using model equation
+\begin{equation}
+\hat{y}(x) = w^0 + \langle x, w^1 \rangle + x^t W^2 x
+\end{equation}
+where
+\begin{itemize}
+\item 
+$$
+W^2 = \left( \begin{array}{ccccc}
+0 & w_{12}^2 & w_{13}^2 & \dots & w_{1m}^2 \\
+0 & 0 & w_{23}^2 & \dots & w_{2m}^2 \\
+\vdots & \ddots & \ddots & \ddots & \vdots \\
+0 & \dots & \dots & \dots & w_{m-1, m}^2 \\
+0 & \dots & \dots & \dots & 0 \\
+\end{array} \right)
+$$
+\end{itemize}
+See subsection \ref{recommender_systems} for more details.
+
+Computation of this model equation looks to have quadratic time $\mathcal{O}(lm^2)$, but \cite[lemma 3.1]{factorization_machines} shows it has linear time $\mathcal{O}(lm)$, and indeed has something closer to $\mathcal{O}(l \mu_{nz})$ where $\mu_{nz}$ is the average of the number $nz(x)$ of nonzero feature values in $x$, for all $x \in X$.
+
+The gradient $\nabla y$ consists of the following partial derivatives
+\begin{align*}
+\frac{\partial y}{\partial w^0} & = 1 \\
+\frac{\partial y}{\partial w_j^1} & = x_j, 1 \leq j \leq m \\
+\frac{\partial y}{\partial w_{i_{\circ} j_{\circ}}^2} & = \left( \sum\limits_{j_1 < j_2} x_{j_1} x_{j_2} \langle w_{j_1}^2, w_{j_2}^2 \rangle \right)' \\
+ & = \left( \sum\limits_{j_1 < j_2} x_{j_1} x_{j_2} \sum\limits_{i = 1}^l w_{i j_1}^2 w_{i j_2}^2 \right)' \\
+ & = \left( \sum\limits_{j_1 < j_2} x_{j_1} x_{j_2} w_{i_{\circ} j_1}^2 w_{i_{\circ} j_2}^2 \right)' \\
+ & = x_{j_{\circ}} \sum\limits_{j \neq j_{\circ}} x_j w_{i_{\circ} j}^2 \\
+ & = x_{j_{\circ}} \sum\limits_{j = 1}^m x_j w_{i_{\circ} j}^2 - x_{j_{\circ}}^2 w_{i_{\circ} j_{\circ}}^2
+\end{align*}
+
+Computation of $\frac{\partial y}{\partial w_{i_{\circ} j_{\circ}}^2}$ looks to have linear time $\mathcal{O}(m)$. But the term $\sum\limits_{j = 1}^m x_j w_{i_{\circ} j}^2$ can be computed once for all $j_{\circ}$ so computation of of $\frac{\partial y}{\partial w_{i_{\circ} j_{\circ}}^2}$ has constant time $\mathcal{O}(1)$.
+
+\vfill
+\pagebreak
+
+\subsection{Degree-$d$ interaction} Model equation to model degree-$d$ interaction between features is
+\begin{equation}\label{degree_d_model_equation}
+\begin{split}
+\hat{y}(x) & = w^0 \\
+ & \,\,\,\,\, + x_1 w_1^1 + \dots + x_m w_m^1 \\
+ & \,\,\,\,\, + x_1 x_2 \langle w_1^2, w_2^2 \rangle + \dots + x_{m-1} x_m \langle w_{m-1}^2, w_m^2 \rangle \\
+ & \,\,\,\,\, + \dots \\
+ & \,\,\,\,\, + x_1 \dots x_d \langle w_1^d, \dots , w_d^d \rangle + \dots + x_{m-d+1} \dots x_m \langle w_{m-d+1}^d, \dots , w_m^d \rangle \\
+ & = w^0 + \langle x, w^1 \rangle + \sum\limits_{a = 2}^d \sum\limits_{j_1 < ... < j_a} x_{j_1} ... x_{j_a} \langle w_{j_1}^a, \dots , w_{j_a}^a \rangle \\
+\end{split}
+\end{equation}
+where $w_{j_1}^a, \dots , w_{j_a}^a \in \mathbb{R}^{l^a}$ and their ``dot product" is defined as
+$$\langle w_{j_1}^a, \dots , w_{j_a}^a \rangle = \sum\limits_{i = 1}^{l^a} w_{i j_1}^a \dots w_{i j_a}^a$$
+
+Note: this ``dot product" leaves something to be desired. Maybe a continuation of
+\begin{itemize}
+\item scalars for degree 0
+\item vectors for degree 1
+\item matrices for degree 2
+\item degree-$d$ tensors for degree $d$ in general? where dot product of tensors is just sum of entry-wise products. Especially if this generalizes \eqref{degree_2_model_equation_in_matrix_form}
+\end{itemize}
+
+Note that this model equation is just a sum of the first $d+1$ elementary symmetric polynomials in $m$ variables $x_1, \dots , x_m$ with general coefficients
+\begin{itemize}
+\item $e_0(x_1, \dots , x_m) = 1$
+\item $e_1(x_1, \dots , x_m) = \sum\limits_{j = 1}^m x_i$
+\item $e_2(x_1, \dots , x_m) = \sum\limits_{j_1 < j_2} x_{j_1} x_{j_2}$
+\item $.$
+\item $.$
+\item $.$
+\item $e_d(x_1, \dots , x_m) = \sum\limits_{j_1 < \dots < j_d} x_{j_1} \dots x_{j_e}$
+\end{itemize}
+
+Again computation of this model equation looks to have polynomial time $\mathcal{O}(l_d m^d)$, but a similar argument to \cite[lemma 3.1]{factorization_machines} shows it has linear time.
+
+The gradient $\nabla y$ consists of the following partial derivatives
+\begin{align*}
+\frac{\partial y}{\partial w^0} & = 1 \\
+\frac{\partial y}{\partial w_j^1} & = x_j, 1 \leq j \leq m \\
+\frac{\partial y}{\partial w_{i_{\circ} j_{\circ}}^a} & = \left( \sum\limits_{j_1 < \dots < j_a} x_{j_1} \dots x_{j_a} \langle w_{j_1}^a, \dots,  w_{j_a}^a \rangle \right)' \\
+ & = \left( \sum\limits_{j_1 < \dots < j_a} x_{j_1} \dots x_{j_a} \sum\limits_{i = 1}^{l^a} w_{i j_1}^a \dots w_{i j_a}^a \right)' \\
+ & = \left( \sum\limits_{j_1 < \dots < j_a} x_{j_1} \dots x_{j_a} w_{i_{\circ} j_1}^a \dots w_{i_{\circ} j_a}^a \right)' \\
+ & = x_{j_{\circ}} \sum\limits_{j_1 < \dots < j_{a-1}, j_{\alpha} \neq j_{\circ}} x_{j_1} \dots x_{j_{a-1}} w_{i_{\circ} j_1}^a \dots w_{i_{\circ} j_{a-1}}^a \\
+ & = x_{j_{\circ}} \sum\limits_{j_1 < \dots < j_a} x_{j_1} \dots x_{j_a} w_{i_{\circ} j_1}^a \dots w_{i_{\circ} j_a}^a - x_{j_{\circ}} \sum\limits_{j_1 < \dots j_{\circ} \dots < j_a} x_{j_1} \dots x_{j_{\circ}} \dots x_{j_a} w_{i_{\circ} j_1}^a \dots w_{i_{\circ} j_{\circ}}^a \dots w_{i_{\circ} j_a}^a \\ 
+\end{align*}
+
+Again computation of $\frac{\partial y}{\partial w_{i_{\circ} j_{\circ}}^a}$ looks to have time $\mathcal{O}(2(a - 1)C(m, a - 1))$. But the term $\sum\limits_{j_1 < \dots < j_a} x_{j_1} \dots x_{j_a} w_{i_{\circ} j_1}^a \dots w_{i_{\circ} j_a}^a$ can be computed once for all $j_{\circ}$ so computation of of $\frac{\partial y}{\partial w_{i_{\circ} j_{\circ}}^a}$ has constant time $\mathcal{O}(1)$.
+
+\vfill
+\pagebreak
+
+\section{Examples} Below are some examples.
+
+\vfill
+\pagebreak
+
+\subsection{GMLs} When $d$ is 1 and $g$ is a link function then factorization machines reduce to generalized linear models, including linear regression and logistic regression.
+
+\vfill
+\pagebreak
+
+\subsection{SVMs} 
+\subsubsection{Linear SVMs} When a support vector machine has linear kernel
+$$k_1(x, x') = 1 + \langle x, x' \rangle$$
+and feature map
+$$\phi(x) = (1, x_1, \dots , x_m)$$
+then its model equation is
+$$\hat{y}(x) = w^0 + \langle x, w^1 \rangle$$
+which is the same as \eqref{degree_d_model_equation} for a degree-$1$ factorization machine.
+
+\subsubsection{Quadratic SVMs} When a support vector machine as quadratic kernel
+$$k(x, x') = (1 + \langle x, x' \rangle)^2$$
+and feature map
+$$\phi(x) = (1, \sqrt{2} x_1, \dots , \sqrt{2} x_m, x_1^2, \dots , x_m^2, \sqrt{2} x_1x_2, \dots , \sqrt{2}x_{m-1}x_m)$$
+then its model equation is
+$$\hat{y}(x) = w^0 + \sqrt{2} \langle x, w^1 \rangle + \sqrt{2} \sum\limits_{j_1 < j_2} x_{j_1} x_{j_2} w_{j_1 j_2}^2 + \sum\limits_{j = 1}^m x_j^2 w_{jj}^2$$
+which is the same as \eqref{degree_2_model_equation} except for the following
+\begin{itemize}
+\item the term $\sum\limits_{j = 1}^m x_j^2 w_{jj}^2$ (factorization machines do not model interaction between a feature with itself)
+\item the terms $w_{j_1 j_2}^2$ are independent (while the terms $\langle w_{j_1}, w_{j_2} \rangle$ and $\langle w_{j_1}, w_{j_3} \rangle$ in \eqref{degree_2_model_equation} are dependent).
+\end{itemize}
+
+\vfill
+\pagebreak
+
+\subsection{Recommender Systems}\label{recommender_systems} When ratings of $m_i$ items by $m_u$ users are represented as
+\vspace{10pt}
+\begin{center}
+\begin{tabular}{c | c c c c c c c c c c | c}
+$X$ & $U_1$ & & & & $U_{m_u}$ & $I_1$ & & & & $I_{m_i}$ & $rating$ \\
+\hline
+$x_1$ & $1$ & 0 & $\dots$ & $\dots$ & $0_{m_u}$ & 0 & $\dots$ & $1$ & $\dots$ & $0_{m_u + m_i}$ & $y_1$ \\
+$x_2$ & $1$ & 0 & $\dots$ & $\dots$ & $0_{m_u}$ & 0 & $\dots$ & $1$ & $\dots$ & $0_{m_u + m_i}$ & $y_2$ \\
+$\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\
+$x_{n-1}$ & 0 & $\dots$ & $\dots$ & $0$ & 1 & 0 & $\dots$ & $1$ & $\dots$ & $0_{m_u + m_i}$ & $y_{n-1}$ \\
+$x_n$ & 0 & $\dots$ & $\dots$ & $0$ & $1$ & 0 & $\dots$ & $1$ & $\dots$ & $0_{m_u + m_i}$ & $y_n$ \\
+\end{tabular}
+\end{center}
+\vspace{10pt}
+then factorization machines reduce to recommendation systems, which can also be used to recommend items. Features are now users and items, and interaction between features is now interaction between user and item.
+
+Model equation to model degree-$2$ interaction between features is now model equation to model interaction between user and item
+\begin{align*}
+\hat{y}(x) & = w^0 + \langle x, w^1 \rangle + \sum\limits_{j_1 < j_2}  x_{j_1} x_{j_2} \langle w_{j_1}^2, w_{j_2}^2 \rangle \\
+ & = w^0 + \langle x, w^1 \rangle + x^t W^2 x \\
+ & = w^0 + w_{j_u}^1 + w_{j_i}^1  + \langle w_{j_u}^2, w_{j_i}^2 \rangle \\
+\end{align*}
+where
+\begin{align*}
+x & = \left( \begin{array}{cccccc} \dots & 1_{j_u} & \dots & \dots & 1_{j_i} & \dots \end{array} \right) \\
+w^1 & = \left( \begin{array}{c} w_1^1 \\ \vdots \\ w_m^1 \end{array}\right) \\
+W^2 & = \left( \begin{array}{ccccc}
+0 & \langle w_1^2, w_2^2 \rangle & \langle w_1^2, w_3^2 \rangle & \dots & \langle w_1^2, w_m^2 \rangle \\
+0 & 0 & \langle w_2^2, w_3^2 \rangle & \dots & \langle w_2^2, w_m^2 \rangle \\
+\vdots & \ddots & \ddots & \ddots & \vdots \\
+0 & \dots & \dots & \dots & \langle w_{m-1}^2, w_m^2 \rangle \\
+0 & \dots & \dots & \dots & 0 \\
+\end{array} \right)
+\end{align*}
+
+We can rewrite this model equation as
+\begin{align*}
+\hat{y}(x) & = w^0 + \langle x^u, w^{1u} \rangle + \langle x^i, w^{1i} \rangle + x^{ut} W^{2ut} W^{2i} x^i \\
+ & = w^0 + w_{j_u}^{1u} + w_{j_i}^{1i} + \langle w_{j_u}^{2u}, w_{j_i}^{2i} \rangle \\
+\end{align*}
+where
+\begin{itemize}
+\item $w^0$ is global bias
+\item $w^{1u} = \left( \begin{array}{c} w_1^{1u} \\ \vdots \\ w_{m_u}^{1u} \end{array} \right)$ is bias vector and each entry $w_{j_u}^{1u}$ is bias for user $U_{j_u}$
+\item $w^{1i} = \left( \begin{array}{c} w_1^{1i} \\ \vdots \\ w_{m_i}^{1i} \end{array} \right)$ is bias vectors and each entry $w_{j_i}^{1i}$ is bias for item $I_{j_i}$
+\item $x_u = \left( \begin{array}{c} 0 \\ \vdots \\ 1_{j_u} \\ \vdots \\ 0_{m_u} \end{array} \right)$ is user $U_{j_u}$\\
+\item $x_i = \left( \begin{array}{c} 0 \\ \vdots \\ 1_{j_i} \\ \vdots \\ 0_{m_i} \end{array} \right)$ is item $I_{j_i}$ \\
+\item $W^{2u} = \left( \begin{array}{ccc} w_{11}^{2u} & \dots & w_{1m_u}^{2u} \\ \vdots & \ddots & \vdots \\ w_{l1}^{2u} & \dots & w_{lm_u}^{2u} \end{array} \right)$ is factor matrix and each column $w_{j_u}^{2u}$ is factor vector for user $U_{j_u}$
+\item  $W^{2i} = \left( \begin{array}{ccc} w_{11}^{2i} & \dots & w_{1m_i}^{2i} \\ \vdots & \ddots & \vdots \\ w_{l1}^{2i} & \dots & w_{lm_i}^{2i} \end{array} \right)$ is factor matrix and each column $w_{j_i}^{2i}$ is factor vector for item $I_{j_i}$
+\item each $\langle w_{j_u}^{2u}, w_{j_i}^{2i} \rangle$ models interaction between user $U_{j_u}$ and item $I_{j_i}$
+\end{itemize}
+
+Note that this is different from using model equation
+$$\hat{y}(x) = w^0 + \langle x^u, w^{1u} \rangle + \langle x^i, w^{1i} \rangle + x^{ut} W^2 x^i$$
+where
+\begin{itemize}
+\item $W^2 = \left( \begin{array}{ccc} w_{11}^2 & \dots & w_{1m_i}^2 \\ \vdots & \ddots & \vdots \\ w_{m_u1}^2 & \dots & w_{m_u, m_i}^2 \end{array} \right)$
+is interaction matrix and each $w_{j_u, j_i}^2$ is interaction between user $U_{j_u}$ and item $I_{j_i}$
+\end{itemize}
+
+In the first case, if user $U_{j_u}$ and item $I_{j_i}$ have not had interaction
+\begin{itemize}
+\item factor vector $w_{j_u}^{2u}$ for user $U_{j_u}$ may be learned through interaction with other items 
+\item factor vector $w_{j_i}^{2i}$ for item $I_{j_i}$ may be learned through interaction with other users
+\item hence $\langle w_{j_u}^{2u}, w_{j_i}^{2i} \rangle$ may be learned
+\end{itemize}
+
+In the second case, if user $U_{j_u}$ and item $I_{j_i}$ have not had interaction then $w_{j_u, j_i}^2$ may not be learned.
+
+Prediction of rating of item $I_{j_i}$ by user $U_{j_u}$ is now
+$$\hat{y}(x) = w^0 + w_{j_u}^{1u} + w_{j_i}^{1i} + \langle w_{j_u}^{2u}, w_{j_i}^{2i} \rangle$$
+
+Recommendation of items for user $U_{j_u}$ now can be based on the ranking of such predictions.
+
+\subsection{Inter-group interaction} As a generalization to example \ref{recommender_systems} above, one can model degree-$d$ interaction between $d$ groups $G_1, \dots , G_d$ of features with corresponding $d$ groups $I_1, \dots , I_d$ of indices in increasing order, where each feature in group $G_a$ is to interact with features in groups $G_{a'}, a' \neq a$ with model equation
+$$\hat{y}(x) = w^0 + \langle x, w^1 \rangle + \sum\limits_{a = 2}^d \sum\limits_{j_1 < ... < j_a}^{j_1 \in I_1, \dots , j_a \in I_a} x_{j_1} ... x_{j_a} \langle w_{j_1}^a, \dots , w_{j_a}^a \rangle$$
+
+\subsection{Intra-group interaction} Or one can model degree-$d$ interaction between features in some particular group $G$ of features with corresponding group $I$ of indices by restricting the indices in \eqref{degree_d_model_equation} to $I$.
+
+\section{Implementation} See Python code and application at github.com/dinhuun.
+
+\newpage
+\begin{bibdiv}
+\begin{biblist}
+\bibselect{references}
+\end{biblist}
+\end{bibdiv}
+
+\end{document}
