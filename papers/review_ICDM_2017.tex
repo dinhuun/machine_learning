@@ -1,0 +1,211 @@
+\documentclass[12pt]{amsart}
+
+\usepackage{amsmath, amssymb, bm, amsrefs}
+\usepackage{enumerate}
+\usepackage[hidelinks]{hyperref}
+\usepackage[all]{xy}
+\usepackage{diagrams}
+\usepackage{fancyvrb}
+\usepackage{mathtools}
+
+\setlength{\textwidth}{16cm} \setlength{\textheight}{22cm}
+\setlength{\oddsidemargin}{0cm} \setlength{\topmargin}{0cm}
+\setlength{\evensidemargin}{0cm} \setlength{\topmargin}{0cm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{question}[theorem]{Question}
+\theoremstyle{definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{dfn}[theorem]{Definition}
+\newtheorem{property}[theorem]{Property}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{problem}[theorem]{Problem}
+
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\kmin}{{\it k}^{\text{th}}-min}
+\newarrow{Line} -----
+\newarrow{Dash}{}{dash}{}{dash}{}
+\newarrow{Corresponds} <--->
+\newarrow{Mapsto} |--->
+\newarrow{Into} C--->
+\newarrow{Embed} >--->
+\newarrow{Onto} ----{>>}
+\newarrow{TeXonto} ----{->>}
+\newarrow{Nto} --+->
+\newarrow{Dashto} {}{dash}{}{dash}>
+
+\title{Review of ICDM 2017}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+Dinh Huu Nguyen, 2017
+\end{center}
+\vspace{20pt}
+
+Abstract: review of ICDM 2017.
+\vspace{20pt}
+
+\tableofcontents
+
+\section{Adaptive Laplace Mechanism: Differential Privacy Preservation in Deep Learning} This paper \cite{ALM} develops the adaptive Laplace mechanism to preserve differential privacy in neural networks such that
+\begin{itemize}
+\item consumption of privacy budget $\epsilon$ is independent of number of training steps
+\item it can adaptively add noise to features based on their contributions to the output
+\item it applies to a variety of neural networks
+\end{itemize}
+
+To achieve this, the mechanism perturbs the preprocessing affine transformation and the loss function in the network.
+
+Let $X$ be a general dataset of $n$ samples $x_1, \dots , x_n$ and $m$ features $X_1, \dots, X_m$
+\vspace{10pt}
+\begin{center}
+\begin{tabular}{c | c c c}
+X & $X_1$ & $\dots$ & $X_m$ \\
+\hline
+$x_1$ & $x_{11}$ & $\dots$ & $x_{1m}$ \\
+$\vdots$ & $\vdots$ & $\ddots$ & $\vdots$ \\
+$x_n$ & $x_{n1}$ & $\dots$ & $x_{nm}$ \\
+\end{tabular}
+\end{center}
+\vspace{10pt}
+and let $X'$ be a neighboring dataset that differs from $X$ by one sample.
+
+Let $y_j = (0, \dots , 1 , \dots , 0) \in \mathbb{R}^c$ be the multiclass label of sample $x_j$.
+
+Let
+\begin{diagram}
+x & \rTo^{W_1} & h_1 & \dots & h_{s-1} & \rTo^{W_s} & h_s & \rTo^{W_{s+1}} & y
+\end{diagram}
+be a general neural network of $s$ hidden layers $h_1, \dots , h_s$ that optimizes loss function $L$ on $t$ batches $B_1, \dots , B_t$ by stochastic gradient descent.
+
+\dfn ($\epsilon$-differential privacy) A function $\mathcal{X} \rTo^F \mathbb{R}^c, x \mapsto F(x)$ fulfills $\epsilon$-differential privacy if
+$$P(F(X) = S) \leq e^{\epsilon} P(F(X') = S)$$
+for all neighboring $X, X'$ and $S \subset \mathbb{R}^c$
+
+The privacy budget $\epsilon$ controls the amount by which $F(X), F(X')$ may differ. A smaller $\epsilon$ enforces better privacy for $F$.
+
+\dfn Laplace mechanism is the popular method of adding noise of Laplace distribution to output $F(x)$ to give it $\epsilon$-differential privacy.
+
+\dfn Layer-wise relevance propagation is a popular algorithm to compute the relevance $R_{ji}$ of each input feature $x_{ji}$ of sample $x_j$ to output $F_{x_j}(\theta)$.
+
+With these ingredients, the adaptive Laplace mechanism follows five steps.
+\begin{enumerate}[1.]
+\item (private relevance) Obtain the average relevance of each feature $X_i$ over all samples $x_j$
+$$R_i = \frac{1}{n} \sum\limits_j R_{ji}$$
+by applying layer-wise relevance propagation to a neural network trained on $X$. Then add Laplace noise to $R_i$ to get $\bar{R}_i$. Privacy budget for this step is $\epsilon_1$.
+
+\item (private affine transformation layer with adaptive noise) Add Laplace noise $n_0$ to each hidden neuron of an affine transformation $W_0$ of the input. Based on $\bar{R}_i$, ``more noise'' is added to features which are ``less relevant'' to the model output and vice versa. Privacy budget for this step is $\epsilon_2$.
+\begin{diagram}
+ & & h_0 \\
+ & \ruTo^{W_0} & & \rdTo^{n_0} \\
+x & & \rTo & & \bar{h}_0 & \rTo^{W_1} & h_1 & \dots & h_{s-1} & \rTo^{W_s} & h_s & \rTo^{W_{s+1}} & y
+\end{diagram}
+
+\item (local response normalization) Apply normalization $n_p$ to each layer to bound nonlinear activation functions
+\begin{diagram}
+ & & h_0 & & & & h_1 & & & & & & h_s & \\
+ & \ruTo^{W_0} & & \rdTo^{n_0} & & \ruTo^{W_1} & & \rdTo^{n_1} & & & & \ruTo^{W_s} & & \rdTo^{n_s} \\
+x & & \rTo & & \bar{h}_0 & \rTo & & & \bar{h}_1 & \dots & \bar{h}_{s-1} & \rTo & & & \bar{h}_s & \rTo^{W_{s+1}} & y
+\end{diagram}
+
+\item (perturbation of loss function) Derive a polynomial approximation to loss function $F$. Then add Laplace noise to $F_{B_q}(\theta)$ to get $\bar{F}_{B_q}(\theta)$ for each batch $B_q$. Privacy budget for this step is $\epsilon_3$.
+
+\item (training) Update $\theta_q$ for loss function $\bar{F}_{B_q}(\theta_q)$ for each batch $B_q$.
+\end{enumerate}
+
+The paper shows that total privacy budget is $\epsilon_1 + \epsilon_2 + \epsilon_3$. It also shows theoretical results for sensitivities and error bounds.
+\vfill
+\pagebreak
+
+\section{Supervised Belief Propagation: Scalable Supervised Inference on Attributed Networks} This paper \cite{SBP} develops the supervised belief propagation algorithm to compute beliefs $b_i(x_i)$ about the state $x_i$ of node $i$ in an attributed network such that
+\begin{itemize}
+\item it learns optimal propagation strength $\epsilon_{ij}$ for each edge $(i, j)$
+\item it applies to all attributed networks
+\end{itemize}
+
+Let $X = \{X_i\}_{i \in V}$ be a pairwise Markov random field of discrete random variables whose joint relationships are modeled as an undirected graph $(V, E)$. The joint probability $p(X = x)$ is computed by multiplying all the potentials $\phi$ and $\psi$
+$$p(X = x) = \frac{1}{Z} \prod \limits_{i \in V} \phi_i(x_i) \prod \limits_{(i, j) \in E} \psi_{ij}(x_i, x_j)$$
+where $Z$ is a normalizing constant. Each node potential $\phi_i(x_i)$ represents an unnormalized probability of node $i$ being in state $x_i$ without consideration of influences by other nodes. Each edge potential $\psi_{ij}(x_i, x_j)$ represents an unnormalized joint probability of nodes $i$ and $j$ being in states $x_i$ and $x_j$.
+
+\dfn An attributed network is a graph $G$ whose edges $E$ and vertices $V$ have attributes such as sign, weight or feature vector.
+
+In this paper the edges $(i, j)$ in $E$ have feature vector $\theta_{ij}$ while the nodes in $V$ include negative nodes $N$ with sign $s_n$ and positive nodes $P$ with sign $s_p$.
+
+\dfn A belief $b_i(x_i)$ is an approximate marginal probability of node $i$ being in state $x_i$.
+
+\dfn A message $m_{ij}^{\ast}(x_j)$ is an unnormalized opinion of node $i$ about the probability of node $j$ being in state $x_j$.
+
+\dfn Loopy belief propagation is another algorithm to compute beliefs $b_j(x_j)$ by passing messages $m_{ij}^{\ast}(x_j)$ between the variables $X_i$.
+
+Loopy belief propagation uniformly initializes all messages and updates them through iterations until they converge. For this it heuristically chooses a propagation strength $\epsilon$  to model edge potentials $\psi_{ij}(x_i, x_j)$.
+
+With these ingredients, the supervised belief propagation algorithm follows these steps.
+\begin{enumerate}[1.]
+\item split $N$ into observed negative nodes $N_{obs}$ and training negative nodes $N_{trn}$.
+\item split $P$ into observed positive nodes $P_{obs}$ and training positive nodes $P_{trn}$.
+\item initialize weight vector $w$
+\item while convergence criterion is not met:
+\begin{itemize}
+\item $b, m \lTo \text{propagate}(w, N_{obs}, P_{obs}, \phi)$
+\item $w \lTo \text{update}(w, b, m, N_{trn}, P_{trn})$
+\end{itemize}
+\item $b, m \lTo \text{ propagate}(w, P, N, \phi)$
+\item return $b$
+\end{enumerate}
+
+The paper provides details about the propagation step, such as how to compute
+$$\epsilon_{ij} = \frac{1}{1 + e^{- \theta_{ij}^t w}}$$
+and details about the update step, such as how to define a differentiable cost function
+$$E(w) = \lambda ||w||_2^2 + \sum \limits_{p \in P_{trn}} \sum \limits_{n \in N_{trn}} h(b_n - b_p)$$
+where $h(x) = \frac{1}{1 + e^{-x/d}}$ to minimize through gradient-based approach.
+
+The space complexity for this algorithm is $O(|\theta| |E|)$ where $|\theta|$ is the number of features and $|E|$ is the number of edges.
+
+The time complexity for this algorithm is $O(((T_1 + \nu |\theta|) |E| + |\theta| |P_{trn}| |N_{trn}|) T_2)$ where $T_1$ is the number of iterations for the propagation step, $\nu$ is the number of derivative updates for the update step, $|P_{trn}|$ is the number of positive training nodes, $|N_{trn}|$ is the number of negative training nodes, and $T_2$ is the number of weight updates. 
+
+The paper applies both supervised belief propagation and loopy belief propagation to classify unlabeled nodes in a partially labeled undirected attribute network for comparison.
+\vfill
+\pagebreak
+
+\section{Linear Time Complexity Time Series Classification with Bag-of-Pattern Features} This paper \cite{BoPF} develops the bag-of-pattern features to classify time  series that is
+\begin{itemize}
+\item free of parameters
+\item competitive to Fast Shapelets, Elastic Ensemble, Bag of SFA Symbols, DTW Features, Shapeless Transform.
+\end{itemize}
+
+\dfn SAX representation uses piecewise aggregate approximation to map a time series to a word.
+
+\dfn ANOVA F value is the ratio of mean squared variance of the feature values among different classes and mean squared variance of feature values among same class.
+
+With these ingredients, the method follows these steps.
+\begin{enumerate}[1.]
+\item extract subsequences of length $l$ from time series.
+\item map each subsequence to a word of length $w$ in an alphabet of size $\alpha$
+\item compute ANOVA F value of each word
+\item form feature sets by decreasing ANOVA F value
+\item select feature set by cross validation with centroids
+\end{enumerate}
+
+The paper explains how subsequence length $l$, word length $w$ and alphabet size $\alpha$ are initially set by user but later selected as the top 15\% combinations during the incremental validation.
+
+The time complexity for this method is $O(mn)$ where $m$ is the length of the longest time series and $n$ is the number of time series in the dataset.
+
+The paper applies bag-of-pattern features to classify time series in the UCR time series classification archive.
+
+\newpage
+\begin{bibdiv}
+\begin{biblist}
+\bibselect{references}
+\end{biblist}
+\end{bibdiv}
+
+prepared by Dinh Huu Nguyen.
+\end{document}
