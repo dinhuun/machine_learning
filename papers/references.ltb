@@ -15,6 +15,25 @@ year={2009},
 pages={255--308}
 }
 
+\bib{logistic_regression}{article}{
+author={Chaudhuri K.},
+author={Monteleoni C.},
+title={Privacy-preserving logistic regression},
+journal={Advances in Neural Information Processing Systems},
+year={2008},
+pages={289--296},
+}
+
+\bib{svm}{article}{
+author={Chaudhuri K.},
+author={Monteleoni C.},
+author={Sarwate A. D.},
+title={Differentially private empirical risk minimization},
+journal={Journal of Machine Learning Research},
+year={2011},
+pages={1069--1109},
+}
+
 \bib{RandomOrthogonalEmbeddings}{article}{
 author={Choromanski, K.},
 author={Rowland, M.},
@@ -22,6 +41,16 @@ author={Weller, A.},
 title={The Unreasonable Effectiveness of Random Orthogonal Embeddings},
 eprint={arxiv.org/abs/1703.00864},
 year={2017},
+}
+
+\bib{revealing_information}{article}{
+publisher={ACM Digital Library},
+author={Dinur, I.},
+author={Nissim, K.},
+title={Revealing information while preserving privacy},
+booktitle={Proceedings of the 22th {ACM} {SIGMOD-SIGACT-SIGART} symposium on Principles of database systems}
+year={2003},
+pages={202--210}
 }
 
 \bib{algorithmic_foundations}{article}{
@@ -35,10 +64,43 @@ year={2014},
 pages={211--407},
 }
 
-\bib{factorization_machines}{article}{
-author={Rendle, Steffen},
-title={Factorization Machines},
-year={2010},
+\bib{calibrating_noise}{article}{
+author={Dwork C.},
+author={McSherry F.},
+author={Nissim K.},
+author={Smith A.},
+title={Calibrating Noise to Sensitivity in Private Data Analysis},
+booktitle={Lecture Notes in Computer Science},
+year={2006},
+pages={265--284},
+}
+
+\bib{decision_tree}{article}{
+author={Jagannathan G.},
+author={Pillaipakkamnatt K.},
+author={Wright R. N.},
+title={A practical differentially private random decision tree classifier},
+journal={International Conference on Data Mining Workshops},
+year={2009},
+pages={114-121},
+}
+
+\bib{survey_and_review}{article}{
+author={Ji Z.},
+author={Lipton Z. C.},
+author={Elkan C.},
+title={Differential privacy and machine learning: A survey and review},
+eprint={https://arxiv.org/abs/1412.7584}
+year={2014},
+}
+
+\bib{neural_network}{article}{
+author={McMahan B.},
+author={Andrew G.},
+author={Erlingsson U.},
+title={A general approach to adding differential privacy to iterative training Procedures},
+eprint={https://arxiv.org/abs/1812.06210}
+year={2018},
 }
 
 \bib{RPackageTDA}{article}{
@@ -83,6 +145,13 @@ booktitle={Proceedings of the 12th {ACM} {SIGKDD} international conference on Kn
 year={2006},
 }
 
+\bib{BoPF}{article}{
+author={Li, X.},
+author={Lin, J.},
+title={Linear Time Complexity Time Series Classification with Bag-of-Pattern Features},
+booktitle={2017 ICDM}
+}
+
 \bib{PythonMapper}{article}{
 author={M\"{u}ller, D.},
 title={Python Mapper documentation},
@@ -118,6 +187,34 @@ title={A distributed persistent homology algorithm},
 eprint={github.com/DIPHA/dipha}
 }
 
+
+\bib{factorization_machines}{article}{
+author={Rendle, Steffen},
+title={Factorization Machines},
+year={2010},
+}
+
+\bib{k_means_clustering}{article}{
+author={Nissim K.},
+author={Smith A.},
+title={Smooth sensitivity and sampling in private data analysis},
+journal={ACM SIGACT-SIGMOD-SIGART Symposium on Principles of Database Systems},
+year={2007},
+pages={75--84},
+}
+
+\bib{naive_bayes_classification}{article}{
+author={Vaidya J.},
+author={Shafiq B.},
+author={Basu A.},
+author={Hong Y.},
+title={Differentially Private Naive Bayes Classification},
+journal={Web Intelligence},
+volume={1},
+year={2013},
+pages={571--576},
+}
+
 \bib{LSPCA}{article}{
 author={Wojnowicz, M.},
 author={Nguyen, D.},
@@ -127,19 +224,24 @@ title={Lazy Stochastic Principal Component Analysis},
 booktitle={2017 ICDM Workshop on High Dimensional Data Mining}
 }
 
-\bib{BoPF}{article}{
-author={Li, X.},
-author={Lin, J.},
-title={Linear Time Complexity Time Series Classification with Bag-of-Pattern Features},
-booktitle={2017 ICDM}
-}
-
 \bib{SBP}{article}{
 author={Yoo, J.},
 author={Jo, S.},
 author={Kang, U.},
 title={Supervised Belief Propagation: Scalable Supervised Inference on Attributed Networks},
 booktitle={2017 ICDM}
+}
+
+\bib{linear_regression}{article}{
+author={Zhang J.},
+author={Zhang Z.},
+author={Xiao X.},
+author={Yang Y.},
+author={Winslett M.},
+title={Functional mechanism: Regression analysis under differential privacy},
+journal={International Conference on Very Large Data Bases},
+year={2012},
+pages={1364-1375},
 }
 
 \end{biblist}

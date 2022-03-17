@@ -1,0 +1,777 @@
+\documentclass[12pt]{amsart}
+
+\usepackage{amsmath, amssymb, bm, amsrefs}
+\usepackage{diagrams}
+\usepackage{enumerate}
+\usepackage{fancyvrb}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\setcounter{section}{-1}
+
+\setlength{\textwidth}{16cm} \setlength{\textheight}{22cm}
+\setlength{\oddsidemargin}{0cm} \setlength{\topmargin}{0cm}
+\setlength{\evensidemargin}{0cm} \setlength{\topmargin}{0cm}
+
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{dfn}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{remark}[theorem]{Remark}
+
+\renewcommand{\labelitemii}{$\circ$}
+
+\title{Differential Privacy}
+\begin{document}
+\maketitle
+
+\begin{center} Dinh Huu Nguyen, 06/25/2019 \end{center}
+\vspace{20pt}
+
+\textbf{Abstract}: a review of differential privacy and its application to machine learning.
+\vspace{20pt}
+
+\tableofcontents
+
+\section{Symbols and Terms}
+ \begin{tabular}{l l}
+$1, \dots , k$ & indexed by $f$ \\
+$1, \dots , l$ & indexed by $g$ \\
+$1, \dots , m$ & indexed by $h$ \\
+$1, \dots , n$ & indexed by $i$ \\
+$1, \dots , o$ & indexed by $j$ \\
+$S$ & subset in $Y$, which is often $\mathbb{R}^k$ \\
+$T$ & subset in $Z$, which is often $\mathbb{R}^l$ \\
+$\mathcal{X}$ & enumerated set of all samples $x_1, \dots , x_i, \dots ,x_N$ \\
+$X$ & dataset of samples $x_{i_1}, \dots , x_{i_n}$ from $\mathcal{X}$ \\
+$x$ & sample \\
+$RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ & random variables from $(\Omega, \mathcal{F}, P)$ to $(Y, \mathcal{G})$ \\
+\end{tabular}
+
+\section{Introduction} Let $\mathcal{X} = \{x_1, \dots , x_i, \dots , x_N\}$ be a nonempty finite enumerated set of samples and let $X = \{x_{i_1}, \dots , x_{i_n}\}$ be a finite dataset of possibly repeated samples from $\mathcal{X}$. There is a bijection between the set of all such datasets and $\mathbb{N}^{|\mathcal{X}|}$
+\begin{align*}
+\{\text{all datasets } X\} & \rTo^{\phi} \mathbb{N}^{|\mathcal{X}|} \\
+X & \mapsto (n_1, \dots , n_i, \dots , n_N)
+\end{align*}
+where each entry $n_i$ is the number of times $x_i$ appears in $X$. This bijection lets us use $\mathbb{N}^{|\mathcal{X}|}$ as a convenient way to represent all datasets $X$.
+
+\begin{example} If $\mathcal{X} = \{x_1, \dots , x_{10}\}$ and $X = \{x_1, x_2, x_2\}$ then $X = (1, 2, 0, \dots , 0) \in \mathbb{N}^{10}$.
+\end{example}
+
+We define the difference between two datasets.
+
+\dfn \label{difference_datasets} (difference) Write $X = (n_1, \dots , n_N)$ and $X' = (n_1', \dots , n_N')$. We define their difference $X - X' = (|n_1 - n_1'|, \dots , |n_N - n_N'|)$.
+
+Surely this difference is symmetric $X - X' = X' - X$.
+
+\begin{example} \label{difference_by_1} (difference by one sample) We represent $X = \{x_1\} = (1, 0, \dots , 0)$ and $X' = \{x_1, x_2\} = (1, 1, 0, \dots , 0)$. Their difference is $X - X' = (0, 1, 0, \dots , 0) = \{x_2\}$.
+\end{example}
+
+\begin{example} \label{difference_by_2} (difference by two samples) We represent $X = \{x_1\} = (1, 0, \dots , 0)$ and $X' = \{x_2\} = (0, 1, 0, \dots , 0)$. Their difference is $X - X' = (1, 1, 0, \dots , 0) = \{x_1, x_2\}$.
+\end{example}
+
+Let $\mathbb{N}^{|\mathcal{X}|} \rTo^f Y, X \mapsto f(X)$ be a function that provides some information about each dataset $X$. Such $f$ is sometimes called a query in literature. In 2003, Nissim and Dinur showed in \cite{revealing_information} that it is impossible to publish arbitrary $f(X)$ without revealing some information about some $x \in X$, and that all information about all $x$ can be revealed by publishing $f(X_j), j = 1, \dots , o$ for an $o$ far smaller than was implied by previous work. We state this problem.
+
+\textbf{Problem}: how to publish plaintext $f(X), f(X')$ and still provide privacy for $X - X'$. That is, how to let someone know $f(X), f(X')$ and the absence/presence of $X - X'$ and not let that person learn the samples in $X - X'$.
+
+In 2006, Dwork, McSherry, Nissim and Smith defined differential privacy as a solution and provided mechanisms to achieve differential privacy in \cite{calibrating_noise}. It provides privacy for the difference $X - X'$, hence the name \textit{differential privacy}. We state this solution.
+
+\textbf{Solution}: \label{solution} replace $\mathbb{N}^{|\mathcal{X}|} \rTo^f Y, X \mapsto f(X)$ with $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})), X \mapsto M(X)$ such that
+\begin{enumerate}[\indent 1.]
+\item \label{mechanism_accuracy} (accuracy) $M(X)$ is concentrated around $f(X)$ so that we can publish samples from $M(X)$ in place of $f(X)$
+\item \label{mechanism_privacy} (privacy) $M(X), M(X')$ are close in terms of the difference $X - X'$ to provide privacy for the samples in $X - X'$
+\end{enumerate}
+
+This solution comes from the intuition
+\begin{itemize}
+\item samples' privacy can not be compromised by any $f(X)$ if they are not in $X$
+\item therefore let them have roughly the same privacy when they are in $X$ as the privacy they have when they are not in $X$
+\end{itemize}
+
+The distance between samples from $M(X)$ and $f(X)$ is our accuracy loss. The proximity between $M(X)$ and $M(X')$ is our privacy gain. We provide details about above problem and solution in the rest of this paper. It is worth noting that this solution has since been either generalized or modified or relaxed to other notions such as R\'enyi differential privacy, mean-concentrated differential privacy, zero-concentrated differential privacy, among others. We do not discuss these notions in this paper.
+
+\begin{example} Professor published midterm 1 average score $s$, when Mike had not taken the test. He publishes midterm 2 average score $s'$, when Mike did take the test. If
+$$ s \not\approx s'$$
+then we infer about Mike's score. Or if
+$$P(s \text{ is high}) \not\approx P(s' \text{ is high})$$
+then we infer about Mike's score.
+\end{example}
+
+\begin{example} Company published average salary $\mu$ before ABC joined. Company publish average salary $\mu'$ after ABC joined. If
+$$\mu \not\approx \mu'$$
+then we infer about ABC's salary. Or if
+$$P(\mu \text{ is in any range}) \approx P(\mu' \text{ is in any range})$$
+then we infer not about ABC's salary.
+\end{example}
+
+\begin{example} Researcher published model parameters $\theta$ trained on lung images before yours was added. Researcher publishes model parameters $\theta'$ trained on lung images after yours was added. If
+$$\theta \approx \theta'$$
+then we infer not about your lung image. Or if
+$$P(\theta \text{ is in any range}) \approx P(\theta' \text{ is in any range})$$
+then we infer not about your lung image.
+\end{example}
+
+\section{Differential Privacy} We recall some definitions for datasets.
+\dfn \label{1_norm} We define 1-norm for datasets as $\mathbb{N}^{|\mathcal{X}|} \rTo^{|| - ||_1} \mathbb{R}, X \mapsto \sum\limits_{i = 1}^{|\mathcal{X}|} |n_i|$.
+
+This 1-norm counts the number of samples in each dataset. Its induced distance counts the number of samples in the difference between two datasets.
+\dfn \label{1_distance} We define 1-distance between two datasets as $\mathbb{N}^{|\mathcal{X}|} \times \mathbb{N}^{|\mathcal{X}|} \rTo^{d_1} \mathbb{R}, (X, X') \mapsto ||X - X'||_1$.
+
+\begin{example} \label{distance_by_1} The distance between $X, X'$ in example \ref{difference_by_1} is $d_1(X, X') = ||(1, 0, \dots , 0)||_1 = 1$.
+\end{example}
+
+\begin{example} \label{distance_by_2} The distance between $X, X'$ in example \ref{difference_by_2} is $d_1(X, X') = ||(1, 1, 0, \dots , 0)||_1 = 2$.
+\end{example}
+
+We will use the following two lemmas about 1-norm and 1-distance for datasets with respect to partition in subsection \ref{parallel_composition}.
+
+\begin{lemma} \label{norm_partition} If $\mathcal{X} = \bigsqcup\limits_{j = 1}^o \mathcal{X}_j$ is a partition of $\mathcal{X}$ then $|X|_1 = \sum\limits_{j = 1}^o |X \cap \mathcal{X}_j|_1$.
+\end{lemma}
+\begin{proof} This follows from the fact that 1-norm counts the number of samples in $X$.
+\end{proof}
+
+\begin{lemma} \label{distance_partition} If $\mathcal{X} = \bigsqcup\limits_{j = 1}^o \mathcal{X}_j$ is a partition of $\mathcal{X}$ then $d_1(X, X') = \sum\limits_{j = 1}^o d_1(X \cap \mathcal{X}_j, X' \cap \mathcal{X}_j)$.
+\end{lemma}
+\begin{proof} This follows from the fact that 1-distance counts the number of samples in $X - X'$ and $X - X' = \bigsqcup\limits_{j = 1}^o ((X - X') \cap \mathcal{X}_j = \bigsqcup\limits_{j = 1}^o ((X \cap \mathcal{X}_j) - (X' \cap \mathcal{X}_j))$.
+\end{proof}
+
+We also recall some definitions for functions.
+\dfn \label{Lipschitz_function} A function $(X, d_X) \rTo^f (Y, d_Y)$ between two metric spaces is called Lipschitz continuous if there exists a real constant $c$ such that $d_Y(f(x), f(x')) \leq c d_X(x, x')$ for all $x, x' \in X$. Such a constant $c$ is called a Lipschitz constant, and the smallest one is called the Lipschitz constant and denoted by $\kappa$.
+
+We modify this definition of Lipschitz continuity and Lipschitz constant for use in subsection \ref{exponential_mechanism}.
+\dfn \label{modified_Lipschitz_function} A function $(X \times Y, d_X) \rTo^f (Z, d_Z)$ is called modified Lipschitz continuous if there exists a real constant $c$ such that $d_Z(f(x, y), f(x', y)) \leq c d_X(x, x')$ for all $x, x' \in X, y \in Y$. Such a constant $c$ is called a modified Lipschitz constant, and the smallest one is called the modified Lipschitz constant and denoted by $\kappa$.
+
+We also add a definition of Lipschitz constant at each point for use in subsection \ref{localized_Gaussian_mechanism}.
+\dfn \label{localized_Lipschitz_constant} A constant $c$ is called a Lipschitz constant for $x$ if $d_Y(f(x), f(x')) \leq c d_X(x, x')$ for all $x' \in X$. The smallest such $c$ is called the Lipschitz constant for $x$ and denoted by $\kappa(x)$.
+
+We assume that $\kappa(x)$ exists for all $x \in X$. Surely $\kappa = \sup \{\kappa(x), x \in X\}$ and $\kappa(x) \leq \kappa$ for all $x \in X$.
+
+\begin{example} \label{identity_function_Lipschitz} For identity function $(Y, d) \rTo^{\text{id}} (Y, d), y \mapsto y$ we have $d(\text{id}(y), \text{id}(y')) = d(y, y')$ for all $y, y' \in Y$. Hence $\kappa = 1$. Also $\kappa(x) = 1$ for all $x \in X$.
+\end{example}
+
+\begin{example} \label{Lipschitz_contants} For this function
+\begin{align*}
+(\{0, 1, 2, 3\}, d_1) & \rTo^f (\{0, 1, 2, 5\}, d_1) \\
+0 & \mapsto 0 \\
+1 & \mapsto 1 \\
+2 & \mapsto 2 \\
+3 & \mapsto 5 \\
+\end{align*}
+we have
+\begin{align*}
+|f(0) - f(0)| & = 0 |0 - 0| \\
+|f(0) - f(1)| & = 1 |0 - 1| \\
+|f(0) - f(2)| & = 1 |0 - 2| \\
+|f(0) - f(3)| & = \frac{5}{3} |0 - 3| \\
+\end{align*}
+Hence $\kappa(0) = \frac{5}{3}$. Similarly $\kappa(1) = 2, \kappa(2) = 3, \kappa(3) = 3$ while $\kappa = 3$.
+\end{example}
+
+\begin{example} \label{counting_function_Lipschitz} For binary function $\mathcal{X} \rTo^b \{0, 1\}, x \mapsto b(x)$ and counting function $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}, d_1), X \mapsto \sum\limits_{x \in X} b(x)$ we have
+\begin{align*}
+d_1(f(X), f(X')) & = |f(X) - f(X')| \\
+ & = |\sum\limits_{x \in X} b(x) - \sum\limits_{x' \in X'} b(x')| \\
+ & \leq \sum\limits_{x \in X - X'} b(x) \\
+ & \leq \sum\limits_{x \in X - X'} 1 \\
+ & = d_1(X - X')
+\end{align*}
+for all datasets $X, X'$. Hence $\kappa \leq 1$. If there are datasets $X, X'$ that differ by some samples $x_{i_1}, \dots , x_{i_k}$ and $b(x_{i_f}) = 1$ then $\kappa = 1$.
+\end{example}
+
+\begin{example} \label{histogram_function_Lipschitz} For binning function $\mathcal{X} \rTo^b \{0, 1\}^k, x_i \mapsto (0, \dots 0, 1, 0, \dots , 0)$ and histogram function $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_1), X \mapsto \sum\limits_{i = 1}^n b(x_i)$ we have
+\begin{align*}
+d_1(f(X), f(X')) & = ||f(X) - f(X')||_1 \\
+ & = ||\sum\limits_{x \in X} b(x) - \sum\limits_{x' \in X'} b(x')||_1 \\
+ & \leq ||\sum\limits_{x \in X - X'} b(x)||_1 \\
+ & = \sum\limits_{x \in X - X'} ||b(x)||_1 \\
+ & = \sum\limits_{x \in X - X'} 1 \\
+ & = d_1(X, X')
+\end{align*}
+for all datasets $X, X'$. Hence $\kappa \leq 1$. If there are datasets $X, X'$ that differ by some samples $x_{i_1}, \dots , x_{i_k}$ then $\kappa = 1$.
+\end{example}
+
+Now we carry out the solution of differential privacy.
+
+\dfn \label{random_mechanism} A random mechanism is a map $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})), X \mapsto M(X)$.
+
+\dfn \label{epsilon_delta_differential_privacy} A random mechanism $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})), X \mapsto M(X)$ is called $(\epsilon, \delta)$-differentially private if 
+$$P(M(X)^{-1}(S)) \leq e^{d_1(X, X') \epsilon} P(M(X')^{-1}(S)) + \delta$$
+for all datasets $X, X'$ and all subsets $S \in \mathcal{G}$.
+
+\dfn \label{epsilon_differential_privacy} A random mechanism $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})), X \mapsto M(X)$ is called $\epsilon$-differentially private if it is $(\epsilon, 0)$-differentially private.
+
+Definition \ref{epsilon_delta_differential_privacy} is sometimes called $\delta$-approximate differential privacy while definition \ref{epsilon_differential_privacy} is sometimes called pure differential privacy in literature. Furthermore $\epsilon$ is called privacy cost while $\delta$ is not called any name. We note that
+\begin{itemize}
+\item sample space $\Omega$, $\sigma$-algebra $\mathcal{F}$ and probability measure $P$ are not made explicit
+\item definition \ref{epsilon_delta_differential_privacy} means
+\begin{itemize}
+\item $\ln(P(M(X)^{-1}(S)) - \delta) - \ln(P(M(X')^{-1}(S))) \leq d_1(X, X') \epsilon$
+\item $\ln(P(M(X')^{-1}(S)) - \delta) - \ln(P(M(X)^{-1}(S))) \leq d_1(X, X') \epsilon$
+\end{itemize}
+\item definition \ref{epsilon_differential_privacy} means 
+\begin{itemize}
+\item $|\ln(P(M(X)^{-1}(S))) - \ln(P(M(X')^{-1}(S)))| \leq d_1(X, X') \epsilon$
+\end{itemize}
+\item smaller $\epsilon$ means better privacy
+\item \textcolor{red}{todo}: interpretation for $\delta$
+\item while the usual definitions of differential privacy work with datasets of distance 1, definitions \ref{epsilon_delta_differential_privacy} and \ref{epsilon_differential_privacy} work with datasets of arbitrary distance, thus removing the need to discuss group privacy in \cite[2.3.2]{algorithmic_foundations}. 
+\end{itemize}
+
+We provide another formulation of $(\epsilon, \delta)$-differential privacy and $\epsilon$-differential privacy.
+
+\dfn For a random variable $(\Omega, \mathcal{F}, P) \rTo^V (Y, \mathcal{G})$, we define its support $\text{supp}(V)$ to be the smallest closed subset $S^{\circ} \in \mathcal{G}$ such that $P(V^{-1}(S^{\circ})) = 1$.
+
+We assume that $\text{supp}(V)$ exists for every random variable $V$.
+
+\dfn \label{delta_max_divergence} For two random variables $(\Omega, \mathcal{F}, P) \pile{\rTo^V \\ \rTo_{V'}} (Y, \mathcal{G})$, we define their $\delta$-approximate max divergence $D_{\infty}^{\delta} (V || V') = \max \{\ln \frac{P(V^{-1}(S)) - \delta}{P(V'^{-1}(S))}, S \in \mathcal{G}, S \subset \text{supp}(V) \text{ and } P(V^{-1}(S)) \geq \delta\}$.
+
+This definition is equivalent to the definition $D_{\infty}^{\delta} (V || V') = \max \{\ln \frac{P(V^{-1}(S)) - \delta}{P(V'^{-1}(S))}, S \in \mathcal{G} \text{ such that } P(V^{-1}(S) \geq \delta\}$ by definition of $\text{supp}(V)$.
+
+\dfn \label{max_divergence} For two random variables $(\Omega, \mathcal{F}, P) \pile{\rTo^V \\ \rTo_{V'}} (Y, \mathcal{G})$, we define their max divergence $D_{\infty} (V || V') = D_{\infty}^{0} (V || V')$.
+
+Compare this divergence with Kullback-Leibler divergence. Now we see
+\begin{itemize}
+\item a random mechanism $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ is $(\epsilon, \delta)$-differentially private iff $D_{\infty}^{\delta} (M(X) || M(X')) \leq d_1(X, X') \epsilon$ and $D_{\infty}^{\delta} (M(X') || M(X)) \leq d_1(X, X') \epsilon$ for all datasets $X, X'$.
+\item a random mechanism $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ is $\epsilon$-differentially private iff $D_{\infty}(M(X) || M(X')) \leq d_1(X, X') \epsilon$ and $D_{\infty}(M(X') || M(X)) \leq d_1(X, X') \epsilon$ for all datasets $X, X'$.
+\end{itemize}
+
+\begin{example} \label{perfect_privacy} (perfect privacy) If $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ is a $0$-differentially private random mechanism then $P(M(X)^{-1}(S)) = P(M(X')^{-1}(X))$ for all datasets $X, X'$ and all subsets $S \in \mathcal{G}$. The difference $X - X'$ makes no difference in the outcomes $P(M(X)^{-1}(S)), P(M(X')^{-1}(S))$. See the next three examples for what this perfect privacy may cause to accuracy.
+\end{example}
+
+\begin{example} \label{perfect_privacy_perfect_accuracy} (perfect privacy, perfect accuracy) If we replace the zero function
+\begin{align*}
+\{0, 1\} & \rTo^0 \{0, 1\} \\
+0 & \mapsto 0 \\
+1 & \mapsto 0 \\
+\end{align*}
+with
+\begin{align*}
+\{0, 1\} & \rTo^M RV((\Omega, \mathcal{F}, P), (\{0, 1\}, \mathcal{G})) \\
+0 & \mapsto 0 \\
+1 & \mapsto 0 \\
+\end{align*}
+then
+\begin{itemize}
+\item $P(M(0) = y) = P(M(1) = y)$ for all $y \in \{0, 1\}$ (perfect privacy)
+\item $P(M(x) = f(x)) = 1$ for all $x \in \{0, 1\}$ (perfect accuracy)
+\end{itemize}
+\end{example}
+
+\begin{example} \label{perfect_privacy_partial_accuracy} (perfect privacy, partial accuracy) If we replace the identity function
+\begin{align*}
+\{0, 1\} & \rTo^{\text{id}} \{0, 1\} \\
+0 & \mapsto 0 \\
+1 & \mapsto 1 \\
+\end{align*}
+with
+\begin{align*}
+\{0, 1\} & \rTo^M RV((\Omega, \mathcal{F}, P), (\{0, 1\}, \mathcal{G})) \\
+0 & \mapsto 0 \\
+1 & \mapsto 0 \\
+\end{align*}
+then
+\begin{itemize}
+\item $P(M(0) = y) = P(M(1) = y)$ for all $y \in \mathbb{R}$ (perfect privacy)
+\item $P(M(0) = f(0)) = 1$ while $P(M(1) = f(1)) = 0$ (partial accuracy)
+\end{itemize}
+\end{example}
+
+\begin{example} \label{perfect_privacy_zero_accuracy} (perfect privacy, zero accuracy) If we replace the identity function
+\begin{align*}
+\{0, 1\} & \rTo^{\text{id}} \{0, 1\} \\
+0 & \mapsto 0 \\
+1 & \mapsto 1 \\
+\end{align*}
+with
+\begin{align*}
+\{0, 1\} & \rTo^M RV((\Omega, \mathcal{F}, P), (\{0, 1\}, \mathcal{G})) \\
+0 & \mapsto 2 \\
+1 & \mapsto 2 \\
+\end{align*}
+then
+\begin{itemize}
+\item $P(M(0) = y) = P(M(1) = y)$ for all $y \in \mathbb{R}$ (perfect privacy)
+\item $P(M(0) = f(0)) = 0$ and $P(M(1) = f(1)) = 0$ (zero accuracy)
+\end{itemize}
+\end{example}
+
+We will use the following lemmas about $\delta$-approximate max divergence in subsection \ref{parallel_composition}.
+
+\begin{lemma} \label{delta_max_divergence_joint_random_variables} For two joint random variables $(\Omega, \mathcal{F}, P) \pile{\rTo^{(V_1, \dots , V_o)} \\ \rTo_{(V_1', \dots , V_o')}} (Y, \mathcal{G})$, if the $V_j$ are independent and the $V_j'$ are independent then $D_{\infty}^{\delta} ((V_1, \dots , V_o) || (V_1', \dots , V_o')) = \sum\limits_{j = 1}^o D_{\infty}^{\delta} (V_j || V_j')$.
+\end{lemma}
+\begin{proof} \textcolor{red}{todo}: verify equality, whether independence is needed, whether inequality is wanted instead of equality.
+\end{proof}
+
+\begin{lemma} \label{delta_max_divergence_delta_prime_max_divergence} For two random variables $(\Omega, \mathcal{F}, P) \pile{\rTo^V \\ \rTo_{V'}} (Y, \mathcal{G})$, if $\delta \leq \delta'$ then $D_{\infty}^{\delta'} (V || V') \leq D_{\infty}^{\delta} (V || V')$.
+\end{lemma}
+\begin{proof} By definition
+\begin{align*}
+D_{\infty}^{\delta'} (V || V') & = \max \{\ln \frac{P(V^{-1}(S)) - \delta'}{P(V'^{-1}(S))}, S \in \mathcal{G} \text{ such that } P(V^{-1}(S) \geq \delta'\} \\
+ & \leq \max \{\ln \frac{P(V^{-1}(S)) - \delta}{P(V'^{-1}(S))}, S \in \mathcal{G} \text{ such that } P(V^{-1}(S) \geq \delta\} \\
+ & = D_{\infty}^{\delta} (V || V')
+\end{align*}
+\end{proof}
+
+Beside quantifying accuracy loss and privacy gain in \ref{mechanism_accuracy} and \ref{mechanism_privacy}, differential privacy has the following nice properties.
+
+\subsection{Preprocessing} \label{preprocessing} One can preprocess the datasets before using an $(\epsilon, \delta)$-differentially private random mechanism and the resulted random mechanism is less differentially private by a factor of Lipschitz constant.
+
+\begin{proposition} \label{preprocessing_epsilon_delta} (Preprocessing) If $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ is $(\epsilon, \delta)$-differentially private and $\mathbb{N}^{|\mathcal{W}|} \rTo^g \mathbb{N}^{|\mathcal{X}|}$ is any preprocessing with Lipschitz constant $\kappa$ then the modification $\mathbb{N}^{|\mathcal{W}|} \rTo^{Mg} RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ is $(\kappa \epsilon, \delta)$-differentially private.
+\end{proposition}
+\begin{proof} By definition
+\begin{align*}
+P((Mg)(W)^{-1}(S)) & = P(M(g(W))^{-1}(S)) \\
+ & \leq e^{d_1(g(W), g(W')) \epsilon} P(M(g(W')^{-1}(S)) + \delta \\
+ & \leq e^{\kappa d_1(W, W') \epsilon} P((Mg)(W')^{-1}(S)) + \delta
+\end{align*}
+for all datasets $W, W'$ and subsets $S \in \mathcal{G}$.
+
+\begin{diagram}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^M & RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})) & & & g(W) & \rTo & Mg(W) \\
+\uTo^g & \ruTo_{Mg} & & & & \uTo & \ruTo & \\
+\mathbb{N}^{|\mathcal{W}|} & & & & & W & & 
+\end{diagram}
+\end{proof}
+
+\subsection{Postprocessing} \label{postprocessing} One can postprocess the outputs of $M(X)$ of an $(\epsilon, \delta)$-differentially private random mechanism $M$ and the resulted random mechanism is equally differentially private. This also means an adversary can not modify the outputs of $M(X)$ to make $M$ less differentially private.
+
+\begin{proposition} \label{postprocessing_epsilon_delta} (Postprocessing) If $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G}))$ is $(\epsilon, \delta)$-differentially private and $(Y, \mathcal{G}) \rTo^g (Z, \mathcal{H})$ is any measurable postprocessing then the modification \newline
+$\mathbb{N}^{|\mathcal{X}|} \rTo^{g_* M} RV((\Omega, \mathcal{F}, P), (Z, \mathcal{H}))$ is $(\epsilon, \delta)$-differentially private, where \newline
+$RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})) \rTo^{g_*} RV((\Omega, \mathcal{F}, P), (Z, \mathcal{H})), V \mapsto gV$ is the pushforward of $g$.
+\end{proposition}
+\begin{proof} By definition
+\begin{align*}
+P((g_* M)(X)^{-1}(T)) & = P(g_*(M(X))^{-1}(T)) \\
+ & = P((g M(X))^{-1}(T)) \\
+ & = P(M(X)^{-1}(g^{-1}(T))) \\
+ & \leq e^{d_1(X, X') \epsilon} P(M(X')^{-1}(g^{-1}(T))) + \delta \\
+ & = e^{d_1(X, X') \epsilon} P((g_* M)(X')^{-1}(T)) + \delta
+\end{align*}
+for all datasets $X, X'$ and subsets $T \in \mathcal{H}$. The same holds for $P((g_* M)(X')^{-1}(T))$.
+
+\begin{diagram}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^M & RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})) & & & X & \rTo & M(X) \\
+ & \rdTo_{g_* M} & \dTo^{g_*} & & & & \rdTo & \dTo \\
+ & & RV((\Omega, \mathcal{F}, P), (Z, \mathcal{H})) & & & & & g_* M(X)
+\end{diagram}
+\end{proof}
+
+\subsection{Sequential Composition} \label{sequential_composition} Any sequence of differentially private mechanism $M_1, \dots , M_m$ is also differentially private. This is true not only when they provide independent information $M_1(X), \dots , M_m(X)$ but also when $M_h(X)$ incorporates $M_1(X), \dots , M_{h - 1}(X)$.
+
+\begin{proposition} \label{sequential_composition_epsilon_delta} If $\mathbb{N}^{|\mathcal{X}|} \rTo^{M_h} RV((\Omega, \mathcal{F}, P), (Y_h, \mathcal{G}_h)), 1 \leq h \leq m$ are independent $(\epsilon_h, \delta_h)$-differentially private then their sequential composition \newline
+$\mathbb{N}^{|\mathcal{X}|} \rTo^{(M_1, \dots , M_m)} RV((\Omega, \mathcal{F}, P), (\prod\limits_{h = 1}^m Y_h, \mathcal{G}(\prod\limits_{h = 1}^m Y_h))), X \mapsto (M_1(X), \dots , M_m(X))$ is $(\sum\limits_{h = 1}^m \epsilon_h, \sum\limits_{h = 1}^m \delta_h)$-differentially private.
+\end{proposition}
+\begin{proof} Write $\epsilon = \sum\limits_{h = 1}^m \epsilon_h$ and $\delta = \sum\limits_{h = 1}^m \delta_h$. Then
+\begin{align*}
+D_{\infty}^{\delta} (M_1(X), \dots, M_m(X) || M_1(X'), \dots , M_m(X')) & = \sum_{h = 1}^m D_{\infty}^{\delta} (M_h(X) || M_h(X')) \text{ by lemma \ref{delta_max_divergence_joint_random_variables}} \\
+ & \leq \sum_{h = 1}^m D_{\infty}^{\delta_h} (M_h(X) || M_h(X')) \text{ by lemma \ref{delta_max_divergence_delta_prime_max_divergence}} \\
+ & \leq \sum_{h = 1}^m d_1(X, X') \epsilon_h \\
+ & = d_1(X, X') \epsilon \\
+\end{align*}
+for all datasets $X, X'$. The same holds for $D_{\infty}^{\delta} (M_1(X'), \dots, M_m(X') || M_1(X), \dots , M_m(X))$.
+\end{proof}
+
+\begin{corollary} \label{sequential_composition_epsilon} If $\mathbb{N}^{|\mathcal{X}|} \rTo^{M_h} RV((\Omega, \mathcal{F}, P), (Y_h, \mathcal{G}_h)), 1 \leq h \leq m$ are $\epsilon_h$-differentially private then their sequential composition $\mathbb{N}^{|\mathcal{X}|} \rTo^{(M_1, \dots , M_m)} RV((\Omega, \mathcal{F}, P),(\prod\limits_{h = 1}^m Y_h, \mathcal{G}(\prod\limits_{h = 1}^m Y_h))), X \mapsto (M_1(X), \dots , M_m(X))$ is $\sum\limits_{h = 1}^m \epsilon_h$-differentially private.
+\end{corollary}
+\begin{proof} This follows immediately from proposition \ref{sequential_composition_epsilon_delta}.
+\end{proof}
+
+\begin{claim} (other) If $\mathbb{P}(\mathbb{\mathcal{X}}) \rTo^{g_i} \mathbb{R}^l, 1 \leq h \leq l$ are independent $(\epsilon, \delta)$-differentially private randomized algorithms then their composition $\mathbb{P}(\mathbb{\mathcal{X}}) \rTo^{(g_1, \dots, g_k)} \mathbb{R}^{kl}$ is $(\sqrt{k} \epsilon \ln \frac{1}{\delta '}, k \delta + \delta')$-differentially private for $\delta' > 0$.
+\end{claim}
+\begin{proof}
+\end{proof}
+
+\begin{claim} (advanced) If $\mathbb{P}(\mathbb{\mathcal{X}}) \rTo^{g_i} \mathbb{R}^l, 1 \leq h \leq l$ are independent $(\epsilon, \delta)$-differentially private randomized algorithms then their adaptive composition $\mathbb{P}(\mathbb{\mathcal{X}}) \rTo^{(g_1, \dots, g_k)} \mathbb{R}^{kl}$ is $(\sqrt{2k \ln \frac{1}{\delta '}} \epsilon + k\epsilon( e^{\epsilon} - 1), k \delta + \delta')$-differentially private for $\delta' > 0$.
+\end{claim}
+\begin{proof}
+\end{proof}
+
+\textcolor{red}{todo}: reconcile above 3 claims.
+
+\subsection{Parallel Composition} \label{parallel_composition} While the privacy cost of sequential composition $(M_1, \dots , M_m)$ of differentially private mechanisms adds up, the privacy cost of parallel composition $(M_1(- \cap \mathcal{X}_{j_1}), \dots , M_m(- \cap \mathcal{X}_{j_m}))$ does not, where $\mathcal{X} = \bigsqcup\limits_{j = 1}^o \mathcal{X}_j$ is a partition of $\mathcal{X}$ and $j_1, \dots , j_m$ are unique. This is useful when we can replace $M$ or $(M_1, \dots , M_m)$ with $(M_1(- \cap \mathcal{X}_{j_1}), \dots , M_m(- \cap \mathcal{X}_{j_m}))$.
+
+\begin{proposition} \label{parallel_composition_epsilon_delta} Let $\mathcal{X} = \bigsqcup\limits_{j = 1}^o \mathcal{X}_j$ be a partition of $\mathcal{X}$ and let $j_1, \dots , j_m$ be unique. If $\mathbb{N}^{|\mathcal{X}|} \rTo^{M_h} RV((\Omega, \mathcal{F}, P), (Y_h, \mathcal{G}_h)), 1 \leq h \leq m$ are $(\epsilon_h, \delta_h)$-differentially private then their parallel composition \newline
+$\mathbb{N}^{|\mathcal{X}|} \rTo^{(M_1(- \cap \mathcal{X}_{j_1}), \dots , M_m(- \cap \mathcal{X}_{j_m}))} RV((\Omega, \mathcal{F}, P), (\prod\limits_{h = 1}^m Y_h, \mathcal{G}(\prod\limits_{h = 1}^m Y_h))), X \mapsto (M_1(X \cap \mathcal{X}_{j_1}), \dots , M_m(X \cap \mathcal{X}_{j_m}))$ is $(\max\{\epsilon_h, 1 \leq h \leq m\}, \max\{\delta_h, 1 \leq h \leq m\})$-differentially private.
+\end{proposition}
+\begin{proof} Write $X_h = X \cap \mathcal{X}_{j_h}, X_h' = X' \cap \mathcal{X}_{j_h}$, $\epsilon = \max\{\epsilon_h, 1 \leq h \leq m\}$ and $\delta = \max\{\delta_h, 1 \leq h \leq m\}$. Then
+\begin{align*}
+D_{\infty}^{\delta} (M_1(X_1), \dots, M_m(X_m) || M_1(X_1' ), \dots , M_m(X_m' )) & = \sum_{h = 1}^m D_{\infty}^{\delta} (M_h(X_i) || M_h(X_i')) \text{ by lemma \ref{delta_max_divergence_joint_random_variables}} \\
+ & \leq \sum_{h = 1}^m D_{\infty}^{\delta_h} (M_h(X_i) || M_h(X_i')) \text{ by lemma \ref{delta_max_divergence_delta_prime_max_divergence}} \\
+ & \leq \sum_{h = 1}^m d_1(X_h, X_h') \epsilon_h \\
+ & \leq \sum_{h = 1}^m d_1(X_h, X_h') \epsilon \\
+ & \leq \sum_{j = 1}^o d_1(X_j, X_j') \epsilon \\
+ & = d_1(X, X') \epsilon \text{ by lemma \ref{distance_partition}}
+\end{align*}
+for all datasets $X, X'$. The same holds for $D_{\infty}^{\delta} (M_1(X_1'), \dots, M_m(X_m') || M_1(X_1 ), \dots , M_m(X_m ))$.
+\end{proof}
+
+\begin{corollary} \label{parallel_composition_epsilon} Let $\mathcal{X} = \bigsqcup\limits_{j = 1}^o \mathcal{X}_j$ be a partition of $\mathcal{X}$ and let $j_1, \dots , j_m$ be unique. If $\mathbb{N}^{|\mathcal{X}|} \rTo^{M_h} RV((\Omega, \mathcal{F}, P), (Y_h, \mathcal{G}_h)), 1 \leq h \leq m$ are $\epsilon_h$-differentially private then their parallel composition \newline
+$\mathbb{N}^{|\mathcal{X}|} \rTo^{(M_1(- \cap \mathcal{X}_{j_1}), \dots , M_m(- \cap \mathcal{X}_{j_m}))} RV((\Omega, \mathcal{F}, P), (\prod\limits_{h = 1}^m Y_h, \mathcal{G}(\prod\limits_{h = 1}^m Y_h))), X \mapsto (M_1(X \cap \mathcal{X}_{j_1}), \dots , M_m(X \cap \mathcal{X}_{j_m}))$ is $\max\{\epsilon_h, 1 \leq h \leq m\}$-differentially private.
+\end{corollary}
+\begin{proof} This follows immediately from proposition \ref{parallel_composition_epsilon}.
+\end{proof}
+
+\section{Mechanisms for Differential Privacy} Given deterministic
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^f \mathbb{R}^k \\
+X & \mapsto f(X)
+\end{align*}
+we create random mechanisms
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})) \\
+X & \mapsto M(X) \\
+\end{align*}
+such that \ref{mechanism_accuracy} and \ref{mechanism_privacy} hold.
+
+\subsection{Randomized Response Mechanism} \label{randomized_response_mechanism} We use Bernoulli random variable to create random mechanisms such that \ref{mechanism_accuracy} and \ref{mechanism_privacy} hold.
+
+\dfn \label{dfn_randomized_response_mechanism} For $p, q \in (0, 1)$ and sequences of response $\{0, 1\}^k \rTo^{\text{id}} \{0, 1\}^k$, we define its randomized response mechanism
+\begin{align*}
+\{0, 1\}^k & \rTo^{M_{\text{id}, B(p), B(q)}} RV((\Omega, \mathcal{F}, P), (\{0, 1\}^k, \mathcal{G})) \\
+(\dots , b_f, \dots) & \mapsto M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) \\
+\end{align*}
+where $(\Omega, \mathcal{F}) \rTo^{M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots)} (\{0, 1\}^k, \mathcal{G})$ is the random variable defined by
+\begin{align*}
+P(M_{\text{id}, B(p), B(q)}(\dots , 0, \dots) & = (\dots , 0, \dots)) = 1 - p \\
+P(M_{\text{id}, B(p), B(q)}(\dots , 0, \dots) & = (\dots , 1, \dots)) = p \\
+P(M_{\text{id}, B(p), B(q)}(\dots , 1, \dots) & = (\dots , 0, \dots)) = q \\
+P(M_{\text{id}, B(p), B(q)}(\dots , 1, \dots) & = (\dots , 1, \dots)) = 1 - q \\
+\end{align*}
+
+\begin{proposition} \label{randomized_response_mechanism_privacy} For sequences of response $(\{0, 1\}^k, d_1) \rTo^{\text{id}} (\{0, 1\}^k, d_1)$, if $\max \left\{ \frac{1 - p}{q}, \frac{p}{1 - q}, \frac{q}{1 - p}, \frac{1 - q}{p} \right\} \leq e^{\epsilon}$ then its randomized response mechanism $M_{\text{id}, B(p), B(q)}$ is $\epsilon$-differentially private.
+\end{proposition}
+\begin{proof} Write $c = \max \left\{ \frac{1 - p}{q}, \frac{p}{1 - q}, \frac{q}{1 - p}, \frac{1 - q}{p} \right\}$. Then
+\begin{align*}
+\frac{P(M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) = (\dots , y_f, \dots))}{P(M_{\text{id}, B(p), B(q)}(\dots , b_f', \dots) = (\dots , y_f, \dots))} & = \frac{\prod\limits_{b_f = 0, y_f = 0} 1 - p \prod\limits_{b_f = 0, y_f = 1} p \prod\limits_{b_f = 1, y_f = 0} q \prod\limits_{b_f = 1, y_f = 1} 1 - q}{\prod\limits_{b_f' = 0, y_f = 0} 1 - p \prod\limits_{b_f' = 0, y_f = 1} p \prod\limits_{b_f' = 1, y_f = 0} q \prod\limits_{b_f' = 1, y_f = 1} 1 - q} \\
+ & \leq \prod\limits_{b_f \neq b_f'} c \\
+ & = c^{d_1((\dots , b_f, \dots), (\dots , b_f', \dots))} \\
+ & \leq e^{d_1((\dots , b_f, \dots), (\dots , b_f', \dots)) \epsilon}
+\end{align*}
+for all sequences $(\dots , b_f, \dots), (\dots , b_f', \dots)$. Similarly $\frac{P(M_{\text{id}, B(p), B(q)}(\dots , b_f', \dots) = (\dots , y_f, \dots))}{P(M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) = (\dots , y_f, \dots))} \leq e^{d_1((\dots , b_f, \dots), (\dots , b_f', \dots)) \epsilon}$. Hence $|\ln(P(M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) = (\dots , y_f, \dots))) - \ln(P(M_{\text{id}, B(p), B(q)}(\dots , b_f', \dots) = (\dots , y_f, \dots)))| \leq d_1((\dots , b_f, \dots), (\dots , b_f', \dots)) \epsilon$ as desired.
+\end{proof}
+
+We compute how well $M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots)$ is concentrated around $(\dots , b_f, \dots)$.
+
+\begin{proposition} \label{randomized_response_mechanism_accuracy} For $0 \leq j \leq k$ and sequences of response $\{0, 1\}^k \rTo^{\text{id}} \{0, 1\}^k$, its randomized response mechanism $M_{\text{id}, B(p), B(q)}$ satisfies
+$$P(||M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) - (\dots , b_f, \dots)||_1 = j) \leq C(k, j) \max\{p, q\}^j \max\{1 - p, 1 - q\}^{k - j}$$
+for every sequence $(\dots , b_f, \dots)$.
+\end{proposition}
+\begin{proof} Surely
+\begin{align*}
+P(||M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) - (\dots , b_f, \dots)||_1 = j) & = P(j \text{ bits get flipped and } (k - j) \text{ bits stay put}) \\
+ & \leq C(k, j) \max\{p, q\}^j \max\{1 - p, 1 - q\}^{k - j}
+\end{align*}
+\end{proof}
+
+\begin{corollary} \label{randomized_response_mechanism_accuracy_one_case} For $0 \leq j \leq k$ and sequences of response $\{0, 1\}^k \rTo^{\text{id}} \{0, 1\}^k$, if $\max \left\{ \frac{1 - p}{q}, \frac{p}{1 - q}, \frac{q}{1 - p}, \frac{1 - q}{p} \right\} \leq e^{\epsilon}$ then its randomized response mechanism $M_{\text{id}, B(p), B(q)}$ is $\epsilon$-differentially private and
+$$P(||M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) - (\dots , b_f, \dots)||_1 = j) \leq C(k, j) \max\{p, q\}^j \max\{1 - p, 1 - q\}^{k - j}$$
+for every sequence $(\dots , b_f, \dots)$.
+\end{corollary}
+\begin{proof} This follows immediately from proposition \ref{randomized_response_mechanism_privacy} and proposition \ref{randomized_response_mechanism_accuracy}.
+\end{proof}
+
+See example \ref{randomized_response_mechanism_response_function} for an illustration of the randomized response mechanism. It can also be generalized for sequences of response $\{0, \dots , d\}^k \rTo{\text{id}} \{0, \dots , d\}^k$.
+
+\subsection{Laplace Mechanism} \label{laplace_mechanism} We can use Laplace random variable to create random mechanisms such that \ref{mechanism_accuracy} and \ref{mechanism_privacy} hold.
+\dfn \label{dfn_laplace_mechanism} For $\beta > 0$ and $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$, we define its Laplace mechanism
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^{M_{f, L(\beta)}} RV((\Omega, \mathcal{F}, P), (\mathbb{R}^k, \mathcal{B}(\mathbb{R}^k))) \\
+X & \mapsto f(X) + (L(\beta), \dots, L(\beta)) \\
+\end{align*}
+where $(\Omega, \mathcal{F}) \rTo^{L(\beta)} (\mathbb{R}, \mathcal{B}({\mathbb{R}}))$ is the Laplace random variable with probability density function $f_{L(\beta)}(x) = \frac{1}{2 \beta} e^{- \frac{|x|}{\beta}}$.
+
+\begin{proposition} \label{Laplace_mechanism_privacy} For $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_1)$ with Lipschitz constant $\kappa$, if $\beta \geq \frac{\kappa}{\epsilon}$ then its Laplace mechanism $M_{f, L(\beta)}$ is $\epsilon$-differentially private.
+\end{proposition}
+\begin{proof} Write $f(X) = (y_1, \dots , y_k)$ and $f(X') = (y_1', \dots , y_k')$. Let $f_X$ and $f_{X'}$ denote the probability density functions of $M_{f, L(\beta)}(X)$ and $M_{f, L(\beta)}(X')$. Then
+\begin{align*}
+\frac{f_X(z_1, \dots , z_k)}{f_{X'}(z_1, \dots , z_k)} & = \prod\limits_{f = 1}^k \frac{f_{L(\beta)}(z_f - y_f)}{f_{L(\beta)}(z_f - y_f')} \\
+ & = \prod\limits_{f = 1}^k \frac{e^{- \frac{|z_f - y_f|}{\beta}}}{e^{- \frac{|z_f - y_f'|}{\beta}}} \\
+ & = \prod\limits_{f = 1}^k e^{\frac{|z_f - y_f'| - |z_f - y_f|}{\beta}} \\
+ & \leq \prod\limits_{f = 1}^k e^{\frac{|y_f - y_f'|}{\beta}} \\
+ & = e^{\frac{\sum\limits_{f = 1}^k |y_f - y_f'|}{\beta}} \\
+ & = e^{\frac{d_1(f(X), f(X)')}{\beta}} \\
+ & \leq e^{\frac{\kappa d_1(X, X')}{\beta}} \\
+ & \leq e^{d_1(X, X') \epsilon} \\
+\end{align*}
+for all datasets $X, X'$. Similarly $\frac{f_{X'}(z_1, \dots , z_k)}{f_X(z_1, \dots , z_k)} \leq e^{d_1(X, X') \epsilon}$. Hence $|\ln(f_X(z_1, \dots , z_k)) - \ln(f_{X'}(z_1, \dots , z_k))| \leq d_1(X, X') \epsilon$ as desired.
+\end{proof}
+
+We compute how well $M_{f, L(\beta)}(X)$ is concentrated around $f(X)$.
+
+\begin{proposition} \label{Laplace_mechanism_accuracy} For $\delta \in (0, 1]$ and $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$, its Laplace mechanism $M_{f, L(\beta)}$ satisfies
+$$P\left( ||M_{f, L(\beta)}(X) - f(X)||_{\infty} \geq \beta \ln \left( \frac{k}{\delta} \right) \right) \leq \delta$$
+for every dataset $X$.
+\end{proposition}
+\begin{proof} Surely
+\begin{align*}
+P\left( ||M_{f, L(\beta)}(X) - f(X)||_{\infty} \geq \beta \ln \left( \frac{k}{\delta} \right) \right) & = P\left( ||f(X) + (L(\beta), \dots , L(\beta)) - f(X)||_{\infty} \geq \beta \ln \left( \frac{k}{\delta} \right) \right) \\
+ & = P\left( ||(L(\beta), \dots , L(\beta))||_{\infty} \geq \beta \ln \left( \frac{k}{\delta} \right) \right) \\
+& = P\left( \max\{|L_f(\beta)|, 1 \leq f \leq k\} \geq \beta \ln \left( \frac{k}{\delta} \right) \right) \\
+ & \leq k P\left( |L(\beta)| \geq \beta \ln \left( \frac{k}{\delta} \right) \right) \\
+ & = k e^{- \ln \left( \frac{k}{\delta} \right)} \\
+ & = \delta
+\end{align*}
+\end{proof}
+
+\begin{corollary} \label{Laplace_mechanism_accuracy_one_case} For $\delta \in (0, 1]$ and $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_1)$ with Lipschitz constant $\kappa$, if $\beta = \frac{\kappa}{\epsilon}$ then its Laplace mechanism $M_{f, L(\beta)}$ is $\epsilon$-differentially private and satisfies
+$$P\left( ||M_{f, L(\beta)}(X) - f(X)||_{\infty} \geq \frac{\kappa}{\epsilon} \ln \left( \frac{k}{\delta} \right) \right) \leq \delta$$
+for every dataset $X$.
+\end{corollary}
+\begin{proof} This follows immediately from proposition \ref{Laplace_mechanism_privacy} and proposition \ref{Laplace_mechanism_accuracy}.
+\end{proof}
+
+See example \ref{Laplace_mechanism_counting_function} for an illustration of the Laplace mechanism.
+
+\subsection{Exponential Mechanism} \label{exponential_mechanism} Let $\mathbb{N}^{|\mathcal{X}|} \times Y \rTo^s \mathbb{R}, (X, y) \mapsto s(X, y)$ be a function such that for each $X$ the maximum $\max \{s(X, y), y \in Y\}$ exists and is realized $\max \{s(X, y), y \in Y\} = s(X, y_X) $ by some $y_X$. Denote the set of all such $y_X$ by $Y_X$.
+
+\begin{example} Let $\mathbb{N}^{|\mathcal{X}|}$ be the collection of test sets, $\mathbb{R}^k$ be the space of models and $\mathbb{N}^{|\mathcal{X}|} \times \mathbb{R}^k \rTo^s \mathbb{R}, (X, y) \mapsto s(X, y)$ be a score function. Then for each test set $X$ the maximum score $\max \{s(X, y), \text{ model } y \in \mathbb{R}^k\}$ exists and is realized $\max \{s(X, y), \text{ model } y \in \mathbb{R}^k\} = s(X, y_X)$ by some model $y_X$.
+\end{example}
+
+Now suppose we want to create random mechanism $\mathbb{N}^{|\mathcal{X}|} \rTo^M RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})), X \mapsto M(X)$ such that
+\begin{enumerate}[\indent 1.]
+\item \label{mechanism_accuracy_exponential} $s(X, M(X))$ is concentrated around $s(X, y_X)$ so that we can publish samples from $M(X)$ in place of $y_X$. Compare this with \ref{mechanism_accuracy}
+\item \label{mechanism_privacy_exponential} same as \ref{mechanism_privacy}
+\end{enumerate}
+
+We can use exponential random variable to create random mechanisms such that \ref{mechanism_accuracy_exponential} and \ref{mechanism_privacy_exponential} hold.
+
+\dfn \label{dfn_exponential_mechanism} For $\lambda > 0$ and $\mathbb{N}^{|\mathcal{X}|} \times Y \rTo^s \mathbb{R}$, we define its exponential mechanism
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^{M_{s, E(\lambda)}} RV((\Omega, \mathcal{F}, P), (Y, \mathcal{G})) \\
+X & \mapsto M_{s, E(\lambda)}(X) \\
+\end{align*}
+where $(\Omega, \mathcal{F}) \rTo^{M_{s, E(\lambda)}(X)} (Y, \mathcal{G})$ is the random variable defined by $P(M_{s, E(\lambda)}(X) = y) \propto e^{\lambda s(X, y)}$.
+
+\begin{proposition} \label{exponential_mechanism_privacy} For $(\mathbb{N}^{|\mathcal{X}|} \times Y, d_1) \rTo^s (\mathbb{R}, d_1)$ with modified Lipschitz constant $\kappa$, if $\lambda \leq \frac{\epsilon}{2 \kappa}$ then its exponential mechanism $M_{s, E(\lambda)}$ is $\epsilon$-differentially private.
+\end{proposition}
+\begin{proof} For simplicity, assume $Y = \{y_1, \dots , y_k\}$ finite. Then
+\begin{align*}
+\frac{P(M_{s, E(\lambda)}(X) = y)}{P(M_{s, E(\lambda)}(X') = y)} & = \frac{ \frac{e^{\lambda s(X, y)}}{\sum\limits_{f = 1}^k e^{\lambda s(X, y_f)}} }{ \frac{e^{\lambda s(X', y)}}{\sum\limits_{f = 1}^k e^{\lambda s(X', y_f)}} } \\
+ & = \frac{e^{\lambda s(X, y)}}{e^{\lambda s(X', y)}} \frac{\sum\limits_{f = 1}^k e^{\lambda s(X', y_f)}}{\sum\limits_{f = 1}^k e^{\lambda s(X, y_f)}} \\
+ & = e^{\lambda (s(X, y) - s(X', y))} \frac{\sum\limits_{f = 1}^k e^{\lambda s(X', y_f)}}{\sum\limits_{f = 1}^k e^{\lambda s(X, y_f)}} \\
+ & \leq e^{\lambda \kappa d_1(X, X')} \frac{\sum\limits_{f = 1}^k e^{\lambda (\kappa d_1(X, X') + s(X, y_f))}}{\sum\limits_{f = 1}^k e^{\lambda s(X, y_f)}} \\
+ & = e^{2 \lambda \kappa d_1(X, X')} \\
+ & \leq e^{d_1(X, X') \epsilon}
+\end{align*}
+for all datasets $X, X'$. Similarly $\frac{P(M_{s, E(\lambda)}(X') = y)}{P(M_{s, E(\lambda)}(X) = y)} \leq e^{d_1(X, X') \epsilon}$. Hence $|\ln(P(M_{s, E(\lambda)}(X) = y)) - \ln(P(M_{s, E(\lambda)}(X') = y))| \leq d_1(X, X') \epsilon$ as desired.
+\end{proof}
+
+We compute how well $s(X, M_{s, E(\lambda)}(X))$ is concentrated around $s(X, y_X)$.
+
+\begin{proposition} \label{exponential_mechanism_accuracy} For finite $Y$ and $\mathbb{N}^{|\mathcal{X}|} \times Y \rTo^s \mathbb{R}$, its exponential mechanism $M_{s, E(\lambda)}$ satisfies
+$$P \left( s(X, y_X) - s(X, M_{s, E(\lambda)}(X)) \geq \frac{1}{\lambda} \left( \ln \left( \frac{|Y|}{|Y_X|} \right) + \delta \right) \right) \leq e^{-\delta}$$
+for every dataset $X$.
+\end{proposition}
+\begin{proof} Write $c = s(X, y_X) - \frac{1}{\lambda} \left( \ln \left( \frac{|Y|}{|Y_X|} \right) + \delta \right)$. By definition
+\begin{align*}
+P(s(X, M_{s, E(\lambda)}(X)) \leq c) & = \sum\limits_{y \in Y} P(M_{s, E(\lambda)}(X) = y, s(X, y) \leq c) \\
+ & = \sum\limits_{y \in Y, s(X, y) \leq c} P(M_{s, E(\lambda)}(X) = y) \\
+ & = \sum\limits_{y \in Y, s(X, y) \leq c} \frac{e^{\lambda s(X, y)}}{\sum\limits_{f = 1}^k e^{\lambda s(X, y_f)}} \\
+ & \leq \frac{|Y| e^{\lambda c}}{\sum\limits_{f = 1}^k e^{\lambda s(X, y_f)}} \\
+ & \leq \frac{|Y| e^{\lambda c}}{|Y_X| e^{\lambda s(X, y_X)}} \\
+ & = \frac{|Y|}{|Y_X|} e^{\lambda (c - s(X, y_X))} \\
+ & = \frac{|Y|}{|Y_X|} e^{\lambda (- \frac{1}{\lambda} (\ln \left( \frac{|Y|}{|Y_X|} \right) + \delta))} \\
+ & = e^{-\delta}
+\end{align*}
+\end{proof}
+
+\begin{corollary} \label{exponential_mechanism_accuracy_one_case} For finite $Y$ and $(\mathbb{N}^{|\mathcal{X}|} \times Y, d_1) \rTo^s (\mathbb{R}, d_1)$ with modified Lipschitz constant $\kappa$, if $\lambda = \frac{\epsilon}{2 \kappa}$ then its exponential mechanism $M_{s, E(\lambda)}$ is $\epsilon$-differentially private and satisfies
+$$P \left( s(X, y_X) - s(X, M_{s, E(\lambda)}(X)) \geq \frac{2 \kappa}{\epsilon} \left( \ln \left( \frac{|Y|}{|Y_X|} \right) + \delta \right) \right) \leq e^{-\delta}$$
+for every dataset $X$. In particular,
+$$P \left( s(X, y_X) - s(X, M_{s, E(\lambda)}(X)) \geq \frac{2 \kappa}{\epsilon} \left( \ln(|Y|) + \delta \right) \right) \leq e^{-\delta}$$
+for every dataset $X$.
+\end{corollary}
+\begin{proof} The first statement follows immediately from proposition \ref{exponential_mechanism_privacy} and proposition \ref{exponential_mechanism_accuracy}. The second statement follows from the first statement and our initial assumption $|Y_X| \geq 1$.
+\end{proof}
+
+\subsection{Gaussian Mechanism} \label{gaussian_mechanism} We can use Gaussian random variable to create random mechanisms such that \ref{mechanism_accuracy} and \ref{mechanism_privacy} hold.
+\dfn \label{dfn_gaussian_mechanism} For $\sigma > 0$ and $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$, we define its Gaussian mechanism
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^{M_{f, N(\sigma)}} RV((\Omega, \mathcal{F}, P), (\mathbb{R}^k, \mathcal{B}(\mathbb{R}^k))) \\
+X & \mapsto f(X) + (N(\sigma), \dots, N(\sigma)) \\
+\end{align*}
+where $(\Omega, \mathcal{F}) \rTo^{N(\sigma)} (\mathbb{R}, \mathcal{B}(\mathbb{R}))$ is the Gaussian random variable with probability density function $f_{N(\sigma)}(x) = \frac{1}{\sqrt{2 \pi \sigma^2}} e^{- \frac{x^2}{2 \sigma^2}}$.
+
+\begin{proposition} \label{Gaussian_mechanism_privacy} For $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_2)$ with Lipschitz constant $\kappa$, if $\sigma \geq \sqrt{2 \ln(\frac{5}{4 \delta})} \frac{\kappa}{\epsilon}$ then its Gaussian mechanism $M_{f, N(\sigma)}$ is $(\epsilon, \delta)$-differentially private.
+\end{proposition}
+\begin{proof} mimic \cite[appendix A]{algorithmic_foundations}.
+\end{proof}
+
+We compute how well $M_{f, N(\sigma)}(X)$ is concentrated around $f(X)$.
+
+\begin{proposition} \label{Gaussian_mechanism_accuracy} For $\delta \in (0, 1]$ and $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$, its Gaussian mechanism $M_{f, N(\sigma)}$ satisfies
+$$P(||M_{f, N(\sigma)}(X) - f(X)||_{\infty} \geq \text{ something}) \leq \delta$$
+for every dataset $X$.
+\end{proposition}
+\begin{proof} \textcolor{red}{todo}
+\end{proof}
+
+\begin{corollary} \label{Gaussian_mechanism_accuracy_one_case} For $\delta \in (0, 1]$ and $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_2)$ with Lipschitz constant $\kappa$, if $\sigma = \sqrt{2 \ln(\frac{5}{4 \delta})} \frac{\kappa}{\epsilon}$ then its Gaussian mechanism $M_{f, N(\sigma)}$ is $(\epsilon, \delta)$-differentially private and satisfies
+$$P(||M_{f, N(\sigma)}(X) - f(X)||_{\infty} \geq \text{ something}) \leq \delta$$
+for every dataset $X$.
+\end{corollary}
+\begin{proof} This follows immediately from proposition \ref{Gaussian_mechanism_privacy} and proposition \ref{Gaussian_mechanism_accuracy}.
+\end{proof}
+
+See example \ref{Gaussian_mechanism_histogram_function} for an illustration of the Gaussian mechanism.
+
+\subsection{Localized Gaussian mechanism} \label{localized_Gaussian_mechanism} Instead of adding the same noise to each $f(X), X \in \mathbb{N}^{|\mathcal{X}|}$ in Gaussian mechanism, one can add less noise specific to each $X$ to create an equally differentially private mechanism that is more accurate.
+
+\dfn \label{dfn_localized_Gaussian_mechanism} For $\mathbb{N}^{|\mathcal{X}|} \rTo^{\sigma} (0, \infty)$ and $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$, we define its Gaussian mechanism
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^{M_{f, N(\sigma)}} RV((\Omega, \mathcal{F}, P), (\mathbb{R}^k, \mathcal{B}(\mathbb{R}^k))) \\
+X & \mapsto f(X) + (N(\sigma(X)), \dots, N(\sigma(X))) \\
+\end{align*}
+where $(\Omega, \mathcal{F}) \rTo^{N(\sigma(X))} (\mathbb{R}, \mathcal{B}(\mathbb{R}))$ is the Gaussian random variable with probability density function $f_{N(\sigma(X))}(x) = \frac{1}{\sqrt{2 \pi \sigma(X)^2}} e^{- \frac{x^2}{2 \sigma(X)^2}}$.
+
+\begin{proposition} \label{localized_Gaussian_mechanism_privacy} For $\mathbb{N}^{|\mathcal{X}|} \rTo^{\sigma} (0, \infty)$ and $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_2)$ with localized Lipschitz constant $\kappa(X)$, if $\sigma(X) \geq \sqrt{2 \ln(\frac{5}{4 \delta})} \frac{\kappa(X)}{\epsilon}$ then its Gaussian mechanism $M_{f, N(\sigma)}$ is $(\epsilon, \delta)$-differentially private.
+\end{proposition}
+\begin{proof} \textcolor{red}{todo}: mimic \cite[appendix A]{algorithmic_foundations} while confirming the right definition of localized Lipschitz constant.
+\end{proof}
+
+We compute how well $M_{f, N(\sigma)}(X)$ is concentrated around $f(X)$.
+
+\begin{proposition} \label{localized_Gaussian_mechanism_accuracy} For $\delta \in (0, 1]$, $\mathbb{N}^{|\mathcal{X}|} \rTo^{\sigma} (0, \infty)$ and $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$, its Gaussian mechanism $M_{f, N(\sigma)}$ satisfies
+$$P(||M_{f, N(\sigma)}(X) - f(X)||_{\infty} \geq \text{ something}) \leq \delta$$
+for every dataset $X$.
+\end{proposition}
+\begin{proof} \textcolor{red}{todo}
+\end{proof}
+
+\begin{corollary} \label{localized_Gaussian_mechanism_accuracy_one_case} For $\delta \in (0, 1]$, $\mathbb{N}^{|\mathcal{X}|} \rTo^{\sigma} (0, \infty)$ and $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_2)$ with localized Lipschitz constant $\kappa(X)$, if $\sigma(X) = \sqrt{2 \ln(\frac{5}{4 \delta})} \frac{\kappa(X)}{\epsilon}$ then its Gaussian mechanism $M_{f, N(\sigma)}$ is $(\epsilon, \delta)$-differentially private and satisfies
+$$P(||M_{f, N(\sigma)}(X) - f(X)||_{\infty} \geq \text{ something}) \leq \delta$$
+for every dataset $X$.
+\end{corollary}
+\begin{proof} This follows immediately from proposition \ref{localized_Gaussian_mechanism_privacy} and proposition \ref{localized_Gaussian_mechanism_accuracy}.
+\end{proof}
+
+\textcolor{red}{todo}: see if this approach of adding less noise specific to each $X$ applies to Laplace mechanism, exponential mechanism as well.
+
+\subsection{Sample-and-aggregate mechanism} \label{sample_and_aggregate_mechanism} \textcolor{red}{todo}: partition $X = \coprod\limits_{f = 1}^k X_f$ (sample step) and replace $f(X)$ with $f'(X) = g(f(X_1), \dots , f(X_k))$ (aggregate step) that has smaller $\kappa, \kappa(X)$ (so that less noise is needed) and is close to $f(X)$ (so that accuracy stays the same).
+
+We conclude this section by stressing that the theoretical bounds for privacy and accuracy in the above propositions are upper bounds, so the privacy and accuracy in practice are usually better.
+
+\section{In Data Science} \label{in_data_science}
+
+\subsection{Response} \label{data_science_response} For the response function $\{0, 1\}^k \rTo^{\text{id}} \{0, 1\}^k$ as in example \ref{identity_function_Lipschitz}, its randomized response mechanism
+\begin{align*}
+\{0, 1\}^k & \rTo^{M_{\text{id}, B(p), B(q)}} RV((\Omega, \mathcal{F}, P), (\{0, 1\}^k, \mathcal{G})) \\
+(\dots , b_f, \dots) & \mapsto M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) \\
+\end{align*}
+is $\max \left\{ \frac{1 - p}{q}, \frac{p}{1 - q}, \frac{q}{1 - p}, \frac{1 - q}{p} \right\}$-differentially private and satisfies
+$$P(||M_{\text{id}, B(p), B(q)}(\dots , b_f, \dots) - (\dots , b_f, \dots)||_1 = j) \leq C(k, j) \max\{p, q\}^j \max\{1 - p, 1 - q\}^{k - j}$$
+for every response $(\dots , b_f, \dots)$ by corollary \ref{randomized_response_mechanism_accuracy_one_case}.
+
+\begin{example} \label{randomized_response_mechanism_response_function} Consider the response function $\{0, 1\}\rTo^{\text{id}} \{0, 1\}$. It has Lipschitz constant $\kappa = 1$.
+\begin{enumerate}[a.]
+\item for $\epsilon = 0, p = \frac{1}{2}, q = \frac{1}{2}$, its randomized response mechanism $M_{\text{id}, B(p), B(q)}$ is $0$-differentially private and satisfies 
+$$P(|M_{\text{id}, B(p), B(q)}(b) - b| = 1) = \frac{1}{2}$$
+for every bit $b$. This is the case of perfect privacy and zero accuracy in example \ref{perfect_privacy_zero_accuracy}.
+\item for $\epsilon = \ln(3), p = \frac{1}{4}, q = \frac{1}{4}$, its randomized response mechanism $M_{\text{id}, B(1/4), B(1/4)}$ is $\ln(3)$-differentially private and satisfies 
+$$P(|M_{\text{id}, B(p), B(q)}(b) - b| = 1) = \frac{1}{4}$$
+for every bit $b$. This is \cite[subsection 3.2]{algorithmic_foundations}.
+\end{enumerate} 
+\end{example}
+
+\section{In Machine Learning} \label{in_machine_learning} We borrow from the review in \cite[section 2]{survey_and_review}. A common application of differential privacy in machine learning is to produce differentially private approximation to the machine learning model at hand. To do this, one can
+\begin{itemize}
+\item add noise to the trained model. This is similar to $f(X) + (L(\beta), \dots , L(\beta))$ in subsection \ref{laplace_mechanism} and is sometimes called output perturbation.
+\item add noise to the objective function. This is similar to $g(f(X) + (L(\beta), \dots , L(\beta))$ in subsection \ref{laplace_mechanism} plus subsection \ref{postprocessing} and is sometimes called objective perturbation.
+\item add noise to each iteration in the algorithm if it is iterative.
+\item sample from the dataset to produce different models before adding noise to their aggregate. This is similar to what is in subsection \ref{sample_and_aggregate_mechanism}.
+\item others
+\end{itemize}
+
+Afterward one can measure the performance of his differentially private mechanism by
+\begin{itemize}
+\item choosing what the true model is
+\item choosing a distance between models
+\item measuring the distance between the differentially private approximation and the true model
+\item analyzing convergence of this distance with respect to the size of the dataset
+\end{itemize}
+
+We go through how all this is done for some machine learning algorithms to get a better sense.
+
+
+\subsection{Baysian conjugate models} We can produce differentially private approximations to Bayesian conjugate models by either adding noise to each closed-form update or by adding noise to the trained models (output perturbation) and provide theoretical bounds and experimental numbers.
+
+\subsection{Counting} \label{machine_learning_counting} For the counting function $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}$ in example \ref{counting_function_Lipschitz} with Lipschitz constant $\kappa = 1$, its Laplace mechanism
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^{M_{f, L(1 / \epsilon)}} RV((\Omega, \mathcal{F}, P), (\mathbb{R}, \mathcal{B}(\mathbb{R}))) \\
+X & \mapsto f(X) + L(1 / \epsilon) \\
+\end{align*}
+is $\epsilon$-differentially private and satisfies
+$$P\left( |M_{f, L(\beta)}(X) - f(X)| \geq \frac{1}{\epsilon} \ln \left( \frac{1}{\delta} \right) \right) \leq \delta$$
+for every dataset $X$ by corollary \ref{Laplace_mechanism_accuracy_one_case}.
+
+\begin{example} \label{Laplace_mechanism_counting_function} Consider the binary function $\mathcal{X} \rTo^b \{0, 1\}, x \mapsto 1$ and its counting function $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}, d_1), X \mapsto \sum\limits_{x \in X} b(x)$ that counts the number of elements in each dataset. It has Lipschitz constant $\kappa = 1$.
+\begin{enumerate}[a.]
+\item for $\epsilon = 1, \beta = 1, \delta = 0.1$, its Laplace mechanism $M_{f, L(1)}$ is $1$-differentially private and satisfies 
+$$P( |M_{f, L(\beta)}(X) - f(X)| \geq \ln 10) \leq 0.1$$
+for every dataset $X$.
+\item for $\epsilon = 1, \beta = 1, \delta = \frac{1}{e}$, its Laplace mechanism $M_{f, L(1)}$ is $1$-differentially private and satisfies 
+$$P( |M_{f, L(\beta)}(X) - f(X)| \geq 1) \leq \frac{1}{e}$$
+for every dataset $X$.
+\end{enumerate} 
+\end{example}
+
+\subsection{Decision Tree} see \cite{decision_tree} for how to produce differentially private approximation to decision tree. It does so by randomly partitioning the sample space into $P_{i1}, \dots , P_{i n_i}$ for each tree $T_i, 1\leq i \leq m$, counting the number $c_{ijk}$ of samples of label $k$ in each partition $P_{ij}$, and predicting based on $P(Y = k \,|\, X = x) = \frac{\sum\limits_{i = 1, x \in P_{i j_i}}^m c_{ij_i k}}{\sum\limits_k \sum\limits_{i = 1, x \in P_{i j_i}}^N c_{ij_i k}}$.
+
+\subsection{Histogram} For the histogram function $\mathbb{N}^{|\mathcal{X}|} \rTo^f \mathbb{R}^k$ in example \ref{histogram_function_Lipschitz} with Lipschitz constant $\kappa = 1$, its Laplace mechanism
+\begin{align*}
+\mathbb{N}^{|\mathcal{X}|} & \rTo^{M_{f, L(1 / \epsilon)}} RV((\Omega, \mathcal{F}, P), (\mathbb{R}^k, \mathcal{B}(\mathbb{R}^k))) \\
+X & \mapsto f(X) + (L(1 / \epsilon), \dots , L(1 / \epsilon)) \\
+\end{align*}
+is $\epsilon$-differentially private and satisfies
+$$P\left( ||M_{f, L(\beta)}(X) - f(X)||_{\infty} \geq \frac{1}{\epsilon} \ln \left( \frac{k}{\delta} \right) \right) \leq \delta$$
+for every dataset $X$ by corollary \ref{Laplace_mechanism_accuracy_one_case}.
+
+\begin{example} \label{Gaussian_mechanism_histogram_function} \textcolor{red}{todo}: Consider the binning function $\mathcal{X} \rTo^b \{0, 1\}^k, x_i \mapsto (0, \dots 0, 1, 0, \dots , 0)$ and its histogram function $(\mathbb{N}^{|\mathcal{X}|}, d_1) \rTo^f (\mathbb{R}^k, d_1), X \mapsto \sum\limits_{i = 1}^n b(x_i)$. It has Lipschitz constant $\kappa = 1$.
+\begin{enumerate}[a.]
+\item for $\epsilon = 1, \sigma = 1, \delta = 0.1$, its Gaussian mechanism $M_{f, G(1)}$ is...
+\item for $\epsilon = 1, \sigma = 1, \delta = \frac{1}{\epsilon}$, its Gaussian mechanism $M_{f, G(\frac{1}{\epsilon})}$ is...
+\end{enumerate}
+\end{example}
+
+\subsection{K-means Clustering} see \cite{k_means_clustering} for how to produce differentially private approximation to $K$-means clustering by using the smooth sensitivity mechanism and the sample-and-aggregate mechanism.
+
+\subsection{Linear Regression} see \cite{linear_regression} for how to produce differentially private approximation to linear regressor. It does so by approximating the objection function with its low-order Taylor expansion and adding Laplace noise to the Taylor expansion coefficients.
+
+\subsection{Logistic Regression} see \cite{logistic_regression} for how to produce differentially private approximation to logistic regressor. It does so by adding noise to the output or by adding noise to the objective function.
+
+\subsection{Naive Bayes} see \cite{naive_bayes_classification} for how to produce differentially private approximation to naive Bayes classifier. It does so by adding Laplace noise to $P(X_i = x_i \,|\, Y = y_k)$ in $P(Y = k \,|\, X_1 = x_1, \dots , X_m = x_m) \propto P(Y = k) \prod\limits_{i = 1}^m P(X_i = x_i \,|\, Y = k)$.
+
+\subsection{Neural Networks} see \cite{neural_network} for how to produce differentially private approximation to neural network. It does so by sampling from the batch or mini-batch, clipping the gradients, adding noise to the clipped gradients, averaging the noised clipped gradients before updating model parameters.
+
+\subsection{SVM} see \cite{svm} for how to produce differentially private approximations to classifiers learned via empirical risk minimization such as SVM. It does so by adding noise to the output or by adding noise to the objective function.
+
+
+\section{Others}
+\begin{itemize}
+\item compliance to GDPR
+\item market demand in US
+\item produce each differentially private approximation to each model in its own package or produce them all in a \verb|differential_privacy| package
+\end{itemize}
+
+\section{Data trail}
+\begin{itemize}
+\item local privacy instead of central privacy: data is privatized before being sent
+\item at event level: each event is privatized
+\item with limit: fixed number of events per time unit
+\item anonymity: no name, no IP identifier, etc. : even pairing 2 batches is impossible
+\item protection: encrypted channel and restricted access 
+\item transparency: opt in or opt out
+\end{itemize}
+
+\newpage
+\begin{bibdiv}
+\begin{biblist}
+\bibselect{references}
+\end{biblist}
+\end{bibdiv}
+
+\end{document}
