@@ -1,0 +1,124 @@
+\documentclass[12pt]{amsart}
+
+\usepackage{amsmath, amssymb, bm, amsrefs}
+\usepackage{enumerate}
+\usepackage[hidelinks]{hyperref}
+\usepackage[all]{xy}
+\usepackage{diagrams}
+\usepackage{fancyvrb}
+\usepackage{mathtools}
+
+\setlength{\textwidth}{16cm} \setlength{\textheight}{22cm}
+\setlength{\oddsidemargin}{0cm} \setlength{\topmargin}{0cm}
+\setlength{\evensidemargin}{0cm} \setlength{\topmargin}{0cm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{question}[theorem]{Question}
+\theoremstyle{definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{dfn}[theorem]{Definition}
+\newtheorem{property}[theorem]{Property}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{problem}[theorem]{Problem}
+
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\kmin}{{\it k}^{\text{th}}-min}
+\newarrow{Line} -----
+\newarrow{Dash}{}{dash}{}{dash}{}
+\newarrow{Corresponds} <--->
+\newarrow{Mapsto} |--->
+\newarrow{Into} C--->
+\newarrow{Embed} >--->
+\newarrow{Onto} ----{>>}
+\newarrow{TeXonto} ----{->>}
+\newarrow{Nto} --+->
+\newarrow{Dashto} {}{dash}{}{dash}>
+
+\title{Generalized Linear Model}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+Dinh Huu Nguyen, 03/17/2022
+\end{center}
+\vspace{20pt}
+
+Abstract: an exposition on generalized linear model, how it
+\begin{itemize}
+\item unifies linear regression, logistic regression, Poisson regression, etc.
+\item frames different loss functions as likelihood
+\item frames different regularizers as prior
+\end{itemize}
+\vspace{20pt}
+
+\tableofcontents
+
+\section{Introduction} A generalize linear model consists of
+\begin{enumerate}
+\item independent variable $X$ and dependent variable $Y \equiv E(\theta)$ in the exponential family
+\item linear predictor $\nu = \beta X$
+\item link $E(Y \,|\, X) = g^{-1}(\nu)$ for some choice $g$ (hence the name ``link function" for $g$)
+\end{enumerate}
+
+\subsection{Likelihood without prior}
+For each $(x, y)$
+$$p(Y = y \,|\, X = x) = p_{Y \,|\, X = x}(y) \text{ for discreet } Y$$
+and
+$$p(Y = y \,|\, X = x) = f_{Y \,|\, X = x}(y) \text{ for continuous } Y$$
+
+For $(x_1, y_1), \dots , (x_n, y_n)$
+
+\subsection{Likelihood with prior}
+
+\section{Examples}
+\subsection{When $Y$ is Gaussian} When $Y \sim N(\mu, \sigma)$ and identity link function $g(t) = t$ then
+\begin{align*}
+E(Y \,|\, X = x) & = \mu \\
+ & = \beta x \\
+p(Y = y_j \,|\, X = x_j) & \sim \frac{e^{- \frac{1}{2} \left( \frac{y_j - \beta x_j}{\sigma} \right)^2}}{\sigma \sqrt{2 \pi}} \\
+p(y_1, \dots , y_n \,|\, x_1, \dots , x_n) & = \prod\limits_{j = 1}^n \frac{e^{- \frac{1}{2} \left( \frac{y_j - \beta x_j}{\sigma} \right)^2}}{\sigma \sqrt{2 \pi}} \\
+\end{align*}
+
+So to maximize the likelihood on the left hand side, one can minimize its negative log
+\begin{align*}
+- ln \left( \prod\limits_{j = 1}^n \frac{e^{- \frac{1}{2} \left( \frac{y_j - \beta x_j}{\sigma} \right)^2}}{\sigma \sqrt{2 \pi}} \right) & = - \sum\limits_{j = 1}^n ln \left( \frac{e^{- \frac{1}{2} \left( \frac{y_j - \beta x_j}{\sigma} \right)^2}}{\sigma \sqrt{2 \pi}} \right) \\
+ & = \frac{1}{2 \sigma^2} \sum\limits_{j = 1}^n (y_j - \beta x_j)^2 + c \\
+\end{align*}
+that contains the often seen squared error $\sum\limits_{j = 1}^n (y_j - \beta x_j)^2$.
+\subsection{When $Y$ is Bernoulli} When $Y \sim Bernoulli(p)$ with logit link function $g(t) = ln \left(\frac{t}{1 - t} \right)$ and its inverse $g^{-1}(t) = \frac{e^t}{1 + e^t}$ then
+\begin{align*}
+E(Y \,|\, X = x) & = p \\
+ & = \frac{e^{\beta x}}{1 + e^{\beta x}} \\
+p(Y = y_j \,|\, X = x_j) & = p_j^{y_j} (1 - p_j)^{(1 - y_j)} \\
+ & = \left( \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right)^{y_j} \left( 1 - \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right)^{1 - y_j} \\
+p(y_1, \dots , y_n \,|\, x_1, \dots , x_n) & = \prod\limits_{j = 1}^n  \left( \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right)^{y_j} \left( 1 - \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right)^{1 - y_j} \\
+\end{align*}
+
+Again to maximize the likelihood on the left hand side, one can minimize its negative log
+\begin{align*}
+-ln \left( \prod\limits_{j = 1}^n  \left( \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right)^{y_j} \left( 1 - \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right)^{1 - y_j} \right) & = - \sum\limits_{j = 1}^n y_j ln \left( \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right) + (1 - y_j) ln \left( 1 - \frac{e^{\beta x_j}}{1 + e^{\beta x_j}} \right) \\
+ & = - \sum\limits_{j = 1}^{n} y_j (\beta x_j) + ln \left( \frac{1}{1 + e^{\beta x_j}} \right) \\
+ & = \sum\limits_{j = 1}^n ln(1 + e^{\beta x_j}) - y_j \beta x_j
+\end{align*}
+often seen.
+
+\subsection{When $Y$ is Poisson}
+
+\section{Link with cross entropy}
+
+
+\newpage
+\begin{bibdiv}
+\begin{biblist}
+\bibselect{references}
+\end{biblist}
+\end{bibdiv}
+
+\end{document}
