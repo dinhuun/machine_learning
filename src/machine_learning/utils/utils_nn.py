@@ -1,4 +1,5 @@
-from typing import Iterable
+from copy import deepcopy
+from typing import Dict, Iterable, Optional, Tuple
 from warnings import warn
 
 import numpy as np
@@ -23,7 +24,10 @@ from torch.nn import (
     Tanh,
 )
 from torch.optim import SGD, Adam, AdamW, Optimizer, RMSprop
+from torch.utils.data import DataLoader
 
+from machine_learning.autoencoders.variational_autoencoder import VariationalAutoEncoder
+from machine_learning.classes import TrainConfigs
 from machine_learning.strings import (
     adam_str,
     adamw_str,
@@ -187,3 +191,119 @@ def regularizer(  # type: ignore
         return lamda_t * sum(param.pow(2).sum() for param in params)
     else:
         raise_not_implemented_error("regularizer", regularizer_name)
+
+
+def train_epoch(
+    model: Module,
+    data_loader: DataLoader,
+    criterion: Module,
+    optimizer: Optimizer,
+    regularizer_name: str = "",
+    lamda: float = 0.0,
+) -> float:
+    """
+    trains model against each batch (X, Y) in data loader
+    :param model: model
+    :param data_loader: data loader
+    :param criterion: such as BCELoss
+    :param optimizer: such as Adam
+    :param regularizer_name: such as "l1"
+    :param lamda: regularizer coefficient
+    :return: average loss across all samples in data loader
+    """
+    model.train()
+    epoch_loss = 0
+    for X, Y in data_loader:
+        X_hat = model(X)
+        batch_loss = (
+            criterion(X_hat, Y)
+            + model.loss
+            + regularizer(regularizer_name, model.parameters(), lamda)
+        )
+        optimizer.zero_grad()
+        batch_loss.backward()
+        epoch_loss += batch_loss.item()
+        optimizer.step()
+    avg_loss = epoch_loss / len(data_loader.dataset)
+    return avg_loss
+
+
+def val_epoch(model: Module, data_loader: DataLoader, criterion: Module) -> float:
+    """
+    validates model against each batch (X, Y) in data loader
+    :param model: model
+    :param data_loader: data loader
+    :param criterion: such as BCELoss
+    :return: average loss across all samples in data loader
+    """
+    model.eval()
+    epoch_loss = 0
+    with torch.no_grad():
+        for X, Y in data_loader:
+            X_hat = model(X)
+            batch_loss = criterion(X_hat, Y) + model.loss
+            epoch_loss += batch_loss.item()
+    avg_loss = epoch_loss / len(data_loader.dataset)
+    return avg_loss
+
+
+def train(
+    configs: TrainConfigs,
+    model: VariationalAutoEncoder,
+    X_train_loader: DataLoader,
+    X_val_loader: DataLoader,
+    criterion: Module,
+    verbose: bool = False,
+    verbose_freq: int = 100,
+) -> Tuple[Optional[Dict], float, int]:
+    """
+    for each epoch in configs.n_epochs
+        * trains model against each batch (X, Y) in X_train_loader
+        * validates model against each batch (X, Y) in X_train_loader
+    :param configs: all train configs
+    :param model: model
+    :param X_train_loader: train data loader
+    :param X_val_loader: val data loader
+    :param criterion: such as BCELoss
+    :param verbose: whether to report train loss and val loss for epoch
+    :param verbose_freq: every which epochs to report train loss and val loss
+    :return: best model state_dict, best val loss, the epoch where they happen
+    """
+    optimizer_configs = configs.optimizer_configs
+    alpha = optimizer_configs.alpha
+    eps = optimizer_configs.eps
+    lamda = optimizer_configs.lamda
+    lr = optimizer_configs.lr
+    momentum = optimizer_configs.momentum
+    optimizer_name = optimizer_configs.optimizer_name
+    regularizer_name = optimizer_configs.regularizer_name
+    weight_decay = optimizer_configs.weight_decay
+    optimizer = init_optimizer(
+        optimizer_name, model.parameters(), lr, momentum, alpha, eps, weight_decay
+    )
+    best_state_dict = None
+    best_val_loss = np.inf
+    best_epoch = -1
+    n_epochs_without_improvement = 0
+    for i in range(configs.n_epochs):
+        avg_train_loss = train_epoch(
+            model, X_train_loader, criterion, optimizer, regularizer_name, lamda
+        )
+        avg_val_loss = val_epoch(model, X_val_loader, criterion)
+
+        if verbose is True and i % verbose_freq == 0:
+            print(f"epoch {i}, train loss {avg_train_loss}, val loss {avg_val_loss}")
+
+        if avg_val_loss < best_val_loss:
+            best_epoch = i
+            best_val_loss = avg_val_loss
+            best_state_dict = deepcopy(model.state_dict())
+            n_epochs_without_improvement = 0
+        else:
+            n_epochs_without_improvement += 1
+            if n_epochs_without_improvement > configs.patience:
+                print(
+                    f"ran out of patience at epoch {i}, train loss {avg_train_loss}, val loss {best_val_loss}"
+                )
+                break
+    return best_state_dict, best_val_loss, best_epoch
