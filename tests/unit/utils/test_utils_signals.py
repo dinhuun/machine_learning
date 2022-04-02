@@ -1,6 +1,6 @@
 import numpy as np
 
-from machine_learning.signals.utils import stack_windows
+from machine_learning.utils.utils_signals import stack_windows
 
 
 def test_stack_windows():
