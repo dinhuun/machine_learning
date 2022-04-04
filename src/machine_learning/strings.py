@@ -43,3 +43,7 @@ state_dict_str = "state_dict"
 
 not_implemented_str = "not_implemented"
 same_str = "same"
+
+label_str = "label"
+level_str = "level"
+range_str = "range"

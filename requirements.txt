@@ -1,4 +1,5 @@
 bayesian-optimization
+d3graph
 h5py
 hdbscan
 hyperopt

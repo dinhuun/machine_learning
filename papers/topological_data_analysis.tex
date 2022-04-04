@@ -1,0 +1,1120 @@
+\documentclass[12pt]{amsart}
+
+\usepackage{amsmath, amssymb, bm, amsrefs}
+\usepackage[hidelinks]{hyperref}
+\usepackage[all]{xy}
+\usepackage{diagrams}
+\usepackage{enumerate}
+\usepackage{fancyvrb}
+\usepackage{mathtools}
+
+\setlength{\textwidth}{16cm} \setlength{\textheight}{22cm}
+\setlength{\oddsidemargin}{0cm} \setlength{\topmargin}{0cm}
+\setlength{\evensidemargin}{0cm} \setlength{\topmargin}{0cm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{question}[theorem]{Question}
+\theoremstyle{definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{dfn}[theorem]{Definition}
+\newtheorem{property}[theorem]{Property}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{problem}[theorem]{Problem}
+
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\kmin}{{\it k}^{\text{th}}-min}
+\newarrow{Line} -----
+\newarrow{Dash}{}{dash}{}{dash}{}
+\newarrow{Corresponds} <--->
+\newarrow{Mapsto} |--->
+\newarrow{Into} C--->
+\newarrow{Embed} >--->
+\newarrow{Onto} ----{>>}
+\newarrow{TeXonto} ----{->>}
+\newarrow{Nto} --+->
+\newarrow{Dashto} {}{dash}{}{dash}>
+
+\title{Topological Data Analysis}
+
+\begin{document}
+\maketitle
+
+\begin{center} Dinh Huu Nguyen, 10/2016 \end{center}
+\vspace{20pt}
+
+\textbf{Abstract}: notes on topological data analysis.
+\vspace{20pt}
+
+\tableofcontents
+
+\section{Introduction} In data science so far we have made one crucial assumption that a dataset is drawn from a random variable $X$. We then use statistics to get its invariants $\mu_X, \sigma_X$ as well as approximations $f_X'$ to its probability density function $f_X$ and use this information in many data science methods.
+
+\begin{example} (Kernel density estimation) We estimate the probability density function of a feature $X$
+$$f_X'(x) = \frac{1}{h |X|} \sum\limits_{x' \in X} K \left( \frac{d(x, x')}{h} \right)$$
+where $K$ is a kernel function and $h$ is a smoothing parameter and use that estimate in many methods.
+\end{example}
+
+\begin{example} (Bayes methods) We make the assumption that the distribution of $X \,|\, Y = 0$ and the distribution of $X \,|\, Y = 1$ are both normal. Then we go on to learn about $\mu_{X \,|\, Y = 0}, \mu_{X \,|\, Y = 1}, \Sigma_{X \,|\, Y = 0}, \Sigma_{X \,|\, Y = 1}$. A further assumption about $\Sigma_{X \,|\, Y = 0}, \Sigma_{X \,|\, Y = 1}$ leads to either naive Bayes, linear discriminant analysis or quadratic discriminant analysis.
+\end{example}
+
+\begin{example}\label{generalizedlinearmodels} (Generalized linear models) We make the assumption that the distribution of $Y$ is in the exponential family and
+$$E(Y \,|\, X = x) = g^{-1}(x \beta)$$
+for some link function $g$. If that assumption is normal distribution and $g(u) = u, g^{-1}(u) = u$ then we get regular regression. If that assumption is Bernoulli distribution and $g(u) = \log_e \left( \frac{u}{1 - u} \right), g^{-1}(u) = \frac{1}{1 + e^{-u}}$ then we get logistic regression. If that assumption is another distribution and another $g$ then we get another regression.
+\end{example}
+
+Now we can make another assumption that a dataset is drawn from a topological space $X$. We then use topology to get its invariants as well as approximations to its shape and use this information in existing data science methods or in new ones.
+
+\begin{example} (Generalized linear models revisited) Assuming that $Y \,|\, X = x$ has normal distribution and $g(u) = u, g^{-1}(u) = u$ in example \ref{generalizedlinearmodels} is equivalent to assuming that $(X, Y)$ is a hyperplane.
+\end{example}
+
+The reason why topology is a good choice for us to use is it has the following properties
+\begin{itemize}
+\item coordinate invariance
+\item deformation invariance
+\item compressed representation
+\end{itemize}
+
+\section{Topological Data Analysis} Topological data analysis refers to applying topology to develop methods for learning about the aforementioned geometric shape of a dataset. Each method intakes a dataset $D$, regarded as possibly noisy observations from an unknown topological space $X$ whose topology was lost during sampling and outputs topological objects and topological invariants that quantify the topological features of $X$. By topological features, we mean
+\begin{itemize}
+\item holes
+\item clusters
+\item tendrils
+\item \dots
+\end{itemize}
+
+The first method is persistence homology. Given a topological space $X$, one builds a filtration of abstract simplicial complexes
+$$\dots \rTo (V_{n-1}, \mathcal{S}_{n-1}) \rTo (V_n, \mathcal{S}_n) \rTo (V_{n+1}, \mathcal{S}_{n+1}) \rTo \dots$$
+converging to the homotopy type of $X$ and feed that into the machinery
+$$ASC \rTo^{C_{\bullet}} CMod_R \rTo^{H_k} Mod_R$$
+to get what is called a persistence homology $\bigoplus \limits_{n \in \mathbb{N}} H_k(C_{\bullet}(V_n, \mathcal{S}_n))$ for $X$.
+
+The second method is Mapper. Given a finite metric set $X$, one finds a map $X \rTo Y$ where $Y$ has a handy cover $\mathcal{U}$ and feed that into the machinery
+\begin{diagram}
+Covers(Y) & \rTo^{f^*} & Covers(X) & \rTo^c & Covers(X) \\
+ & & & \rdTo_{N^c} & \dTo^N \dTo_{MV} \\
+ & & & & ASC
+\end{diagram}
+to get a visual representation for $X$.
+
+As we vary our choices above, we get different approximations to $X$. We will develop the above objects and maps in the order they appear.
+
+\section{Covers} Let $Top$ be the category whose objects are topological spaces $X$ and whose morphisms are continuous maps between them.
+
+\dfn An open cover $\mathcal{U}$ for $X$ is a collection $\{U_{\alpha}\}_{\alpha \in A}$ of open subsets $U_{\alpha}$ such that $X = \bigcup\limits_{\alpha \in A} U_{\alpha}$. A good open cover for $X$ is an open cover where every nonempty finite intersection $U_{\alpha_1} \cap \ldots \cap U_{\alpha_n}$ is contractible.
+
+While there are covers of closed subsets and of other types of subsets, the word {\it cover} is almost synonymous with {\it open cover} in topology. In this paper we only consider open covers so we will drop the word {\it open} and only say {\it cover} when we mean {\it open cover}.
+
+Naturally a cover $\mathcal{U}$ for $X$ is called a subcover of another cover $\mathcal{U}'$ if $\mathcal{U} \subset \mathcal{U}'$.
+
+The set of all covers $\{U_{\alpha}\}_{\alpha \in A}$ for $X$ form a category $Covers(X)$ whose morphisms $\{U_{\alpha}\}_{\alpha \in A} \rTo^{\varphi} \{U_{\alpha'}'\}_{\alpha' \in A'}$ are all maps of sets
+\begin{align*}
+A & \rTo^{\varphi} A' \\
+\alpha & \mapsto \varphi(\alpha)
+\end{align*}
+such that $U_{\alpha} \subset U_{\varphi(\alpha)}'$ for all $\alpha \in A$. If such $\varphi$ exists then $\mathcal{U}$ is called a refinement of $\mathcal{U}'$. Surely every subcover is a refinement while the converse may not be true.
+
+The set of all good covers for $X$ form a full subcategory of the category $Covers(X)$
+$$CoversGood(X) \rTo Covers(X)$$
+
+\dfn For each cover $\mathcal{U}$, we define its dimension $\dim(\mathcal{U}) = \max \{k, \text{ some distinct } U_{\alpha_0} \cap \ldots \cap U_{\alpha_k} \text{ is nonempty}\}$.
+
+Equivalently, $\dim(\mathcal{U}) = \min \{k, \text{ all distinct } U_{\alpha_0} \cap \ldots \cap U_{\alpha_{k+1}} \text{ are empty}\}$.
+
+\begin{example}\label{coverforR} For the real line $\mathbb{R}$ and fixed $r > 0, \epsilon > 0$, the collection $\mathcal{U}^{r, \epsilon} = \{U_z^{r, \epsilon}\}_{z \in \mathbb{Z}}$ where $U_z^{r, \epsilon}$ is the open interval $(zr - \epsilon, zr + r + \epsilon)$ form a cover for $\mathbb{R}$. Surely $U_z^{r, \epsilon} \cap U_{z+1}^{r, \epsilon} \neq \emptyset$, so $\dim(\mathcal{U}^{r, \epsilon}) \geq 1$. And if $\epsilon < \frac{r}{2}$ then $U_{z_0}^{r, \epsilon} \cap \ldots \cap U_{z_{k+1}}^{r, \epsilon} = \emptyset$ whenever $k \geq 1$, so $\dim(\mathcal{U}^{r, \epsilon}) \leq 1$. In that case $\mathcal{U}^{r, \epsilon}$ has dimension 1. The Cartesian product of these covers form a corresponding cover for $\mathbb{R}^n$.
+\end{example}
+
+\begin{example}\label{mapofcoversforR1} Since $(zr - \epsilon, zr + r + \epsilon) \subset (zr - \epsilon', zr + r + \epsilon')$ for $\epsilon < \epsilon'$, the map
+\begin{align*}
+\mathbb{Z} & \rTo^{\varphi} \mathbb{Z} \\
+z & \mapsto z
+\end{align*}
+is a map of covers $\{U_z^{r, \epsilon}\}_{z \in \mathbb{Z}} \rTo^{\varphi} \{U_z^{r, \epsilon'}\}_{z \in \mathbb{Z}}$ for $\mathbb{R}$.
+\end{example}
+
+\begin{example}\label{mapofcoversforR2} Since $(zr - \epsilon, zr + r + \epsilon) \subset (z2r - \epsilon, z2r + 2r + \epsilon)$, the map
+\begin{align*}
+\mathbb{Z} & \rTo^{\varphi} \mathbb{Z} \\
+z & \mapsto z/2
+\end{align*}
+is a map of covers $\{U_z^{r, \epsilon}\}_{z \in \mathbb{Z}} \rTo^{\varphi} \{U_z^{2r, \epsilon}\}_{z \in \mathbb{Z}}$ for $\mathbb{R}$.
+\end{example}
+
+\begin{example}\label{openballcover} (open ball cover) If $X$ is a metric space then the collection $\mathcal{U}_{X, \epsilon} = \{U_{v, \epsilon}\}_{v \in X}$ where $U_{v, \epsilon}$ is the open ball $\{x \in X, d(x, v) < \epsilon\}$ form a cover for $X$. Since $U_{v, \epsilon} \subset U_{v, \epsilon'}$ for $\epsilon < \epsilon'$, the map
+\begin{align*}
+X & \rTo^{\varphi} X \\
+v & \mapsto v
+\end{align*}
+is a map of covers $\{U_{v, \epsilon}\}_{v \in X} \rTo^{\varphi} \{U_{v, \epsilon'}\}_{v \in X}$.
+
+Depending on $\epsilon$, a smaller collection $\mathcal{U}_{V, \epsilon}$ where $V \subset X$ may cover $X$. In that case it is a subcover, hence a refinement for $\mathcal{U}_{X, \epsilon}$. Its dimension and goodness depend on $X, V$ and $\epsilon$.
+\end{example}
+
+\begin{example}\label{coversforunitcircle} For the unit circle $X = \{e^{i \theta}, 0 \leq \theta \leq 2\pi\}$, the collection $$\mathcal{U} = \{U_1, U_2\} \text{ where } U_i = \{e^{i \theta}, (i-1)\pi - \delta \leq \theta \leq i\pi + \delta\}$$
+form a cover for $X$ that is not good and of dimension 1 while the collection
+$$\mathcal{U}' = \{U_1', U_2', U_3'\} \text{ where } U_i' = \{e^{i \theta}, (i-1)\frac{2 \pi}{3} - \delta \leq \theta \leq i\frac{2\pi}{3} + \delta\}$$
+form a cover for $X$ that is good and of dimension 1.
+
+If we define a metric $d(e^{i\theta}, e^{i\theta'}) = |\theta - \theta'|$ then
+$$\mathcal{U} = \mathcal{U}_{V, \epsilon} \text{ where } V = \{e^{i\frac{\pi}{2}}, e^{i\frac{3\pi}{2}}\} \text{ and } \epsilon = \frac{\pi}{2} + \delta$$
+while
+$$\mathcal{U}' = \mathcal{U}_{V', \epsilon'} \text{ where } V' = \{e^{i\frac{\pi}{3}}, e^{i\frac{3\pi}{3}}, e^{i\frac{5\pi}{3}}\} \text{ and } \epsilon' = \frac{\pi}{3} + \delta$$
+
+If we increase $\epsilon'$ to $\frac{2\pi}{3}$ then $U_1' \cap U_2' \cap U_3'$ has 3 connected components so now $\mathcal{U}'$ is not good and of dimension 2.
+\end{example}
+
+\begin{example}\label{opencellcover} (open cell cover) If $X$ is a metric space and $V \subset X$ then the collection $\mathcal{U}_V = \{U_v\}_{v \in V}$ where $U_v$ is the open cell $\{x \in X, d(x, v) \leq d(x, v') \text{ for all } v' \in V\}$ form a cover for $X$. The open cells $U_v$ are just clusters of points around the {\it landmark points} $v$. Their number can be much smaller than the number of open balls in an open ball cover.
+\end{example}
+
+The set of all categories $Covers(X), X \in Top$ form a category $Covers$ whose morphisms are covariant functors between those categories. There is a contravariant functor
+$$Top \rTo Covers$$
+\begin{diagram}
+X & \rMapsto & Covers(X) \\
+\dTo^f & & \uTo_{f^*} \\
+Y & \rMapsto & Covers(Y) 
+\end{diagram}
+where the covariant functor $f^*$ does
+\begin{diagram}
+\{V_{\beta}\}_{\beta \in B} & \rMapsto^{f^*} & \{f^{-1}(V_{\beta})\}_{\beta \in B} \\
+\dTo^{\varphi} & & \dTo_{\varphi} \\
+\{V_{\beta'}'\}_{\beta' \in B'} & \rMapsto^{f^*} & \{f^{-1}(V_{\beta'}')\}_{\beta' \in B'}
+\end{diagram}
+
+This means whenever $f$ is available and $Y$ has some handy covers then $X$ will get some covers. However, $f^*$ does not map good covers to good covers
+\begin{diagram}
+Covers(Y) & \rTo^{f^*} & Covers(X) \\
+\uTo & & \uTo \\
+CoversGood(Y) & \rNto & CoversGood(X)
+\end{diagram}
+unless $f$ is reasonable. In our setting, $f$ is called a reference map and $Y$ is called a reference space.
+
+\begin{example}\label{pi0ofcovers} For each cover $\mathcal{U} = \{U_{\alpha}\}_{\alpha \in A}$ for $X$, we can define another cover $\mathcal{U}^{\pi_0} = \{U_{\alpha \beta}\}_{\alpha \in A, \beta \in B_{\alpha}}$ by breaking each $U_{\alpha} = \bigsqcup\limits_{\beta \in B_{\alpha}} U_{\alpha \beta}$ up into its connected components. The superscript $\pi_0$ is used because the $0^{\text{th}}$ homotopy group $\pi_0(X)$ is the set of connected components of $X$.
+\end{example}
+
+The map
+\begin{align*}
+A \times \bigsqcup\limits_{\alpha \in A} B_{\alpha} & \rTo^{\varphi} A \\
+(\alpha, \beta) & \mapsto \alpha 
+\end{align*}
+is a map of covers $\mathcal{U}^{\pi_0} \rTo^{\varphi} \mathcal{U}$ for $X$. Thus this procedure defines a covariant functor
+\begin{diagram}
+Covers(X) & \rTo^{\pi_0} & Covers(X) & & \mathcal{U} & \rMapsto & \mathcal{U}^{\pi_0} \\
+\uTo & & \uTo & & \\
+CoversGood(X) & \rTo^{\pi_0} & CoversGood(X) & &
+\end{diagram}
+
+Though it may not map covers to good covers, it does map good covers to good covers.
+
+\section{Abstract Simplicial Complexes}\label{abstractsimplicialcomplexes} We consider the next set of objects.
+\dfn An abstract simplicial complex is a pair $(V, \mathcal{S})$ of finite set $V = \{v_0, \dots , v_n\}$ and collection $\mathcal{S} = \{\text{nonempty subsets } S \text{ of } V\}$ that is closed under inclusion.
+
+Closure under inclusion means if $S \in \mathcal{S}$ and nonempty $R \subset S$ then $R \in \mathcal{S}$. Clearly $\mathcal{S} = \bigsqcup\limits_{k = 0}^n \mathcal{S}_k$ where $\mathcal{S}_k = \{S, |S| = k + 1\}$ is the set of those subsets of size $k+1$. They are called $k$-simplices. The $0$-simplices $\mathcal{S}_0 $ is the set of vertices $V$.
+
+Naturally an abstract simplicial complex $(V, \mathcal{S})$ is called a subcomplex of another abstract simplicial complex $(V', \mathcal{S}')$ if $V \subset V'$ and $\mathcal{S} \subset \mathcal{S}'$.
+
+The set of all abstract simplicial complexes $(V, \mathcal{S})$ form a category $ASC$ whose morphisms $(V, \mathcal{S}) \rTo^{\varphi} (V', \mathcal{S}')$ are all maps of sets
+\begin{align*}
+V & \rTo^{\varphi} V' \\
+v & \mapsto \varphi(v)
+\end{align*}
+such that $\varphi(S) \in \mathcal{S}'$ for all $S \in \mathcal{S}$. If such $\varphi$ exists then $(V', \mathcal{S}')$ is called an enrichment of $(V, \mathcal{S})$. Surely every abstract simplicial complex is an enrichment of its subcomplexes while the converse may not be true.
+
+Associated to each abstract simplicial complex $(V, \mathcal{S})$ is the concrete simplicial complex $|V, \mathcal{S}| = \bigcup \limits_{S \in \mathcal{S}} c(S) \subset \mathbb{R}^n$ where $c(S)$ is the convex hull spanned by $e_i, v_i \in S$. In many places to come, when we mention $(V, \mathcal{S})$, we actually refer to $|V, \mathcal{S}|$.
+\dfn For each abstract simplicial complex $(V, \mathcal{S})$, we define its dimension $\dim(V, \mathcal{S}) = \max \{k, \mathcal{S}_k \text{ is nonempty}\}$.
+
+Equivalently, $\dim(V, \mathcal{S}) = \min \{k, \mathcal{S}_{k+1} \text{ is empty}\}$. This dimension is equal to the topological dimension of $|V, \mathcal{S}|$. We connect covers to abstract simplicial complexes.
+\dfn For a cover $\mathcal{U} = \{U_v\}_{v \in V}$ for $X$, we define its nerve $N(\mathcal{U})$ to be the abstract simplicial complex $(V, \mathcal{S})$ where $S \in \mathcal{S}$ if and only if $\bigcap\limits_{v \in S} U_v \neq \emptyset$.
+
+One can verify that this nerve construction defines a covariant functor
+$$Covers(X) \rTo^N ASC$$
+\begin{diagram}
+\mathcal{U} & \rMapsto & N(\mathcal{U}) \\
+\dTo^{\varphi} & & \dTo_{\varphi} \\
+\mathcal{U}' & \rMapsto & N(\mathcal{U}')
+\end{diagram}
+where a map of cover $\mathcal{U} \rTo^{\varphi} \mathcal{U}'$ induces the same map of abstract simplicial complexes $N(\mathcal{U}) \rTo^{\varphi} N(\mathcal{U}')$. This means if $\mathcal{U}$ is a refinement of $\mathcal{U}'$ then $N(\mathcal{U}')$ is an enrichment of $N(\mathcal{U})$.
+
+\begin{example} The map of covers $\mathcal{U}_{V, \epsilon} \rTo^{\varphi} \mathcal{U}_{V, \epsilon'}$ in example \ref{openballcover} induces the same map of abstract simplicial complexes $N(\mathcal{U}_{V, \epsilon}) \rTo^{\varphi} N(\mathcal{U}_{V, \epsilon'})$
+\end{example}
+
+Here is one way a cover relates to its nerve.
+\begin{proposition}\label{dimofcoverequalsdimofnerve} The dimension of a cover $\{U_{\alpha}\}_{v \in V}$ is equal to the dimension of its nerve $(V, \mathcal{S})$.
+\end{proposition}
+\begin{proof} It follows immediately from the fact that if some $U_{\alpha_0} \cap \ldots \cap U_{\alpha_k}$ is nonempty then $\mathcal{S}_k$ is nonempty and if all $U_{\alpha_0} \cap \ldots \cap U_{\alpha_{k+1}}$ are empty then $\mathcal{S}_{k+1}$ is empty.
+\end{proof}
+
+\subsection{\v{C}ech Complex} We make a distinction and call the nerves $N(\mathcal{U})$ of good covers \v{C}ech complexes and denote them by $\check{C}(\mathcal{U})$. That is
+\begin{diagram}
+Covers(X) & \rTo^N & ASC \\
+\uTo & \ruTo_{\check{C}} & \\
+CoversGood(X) & &
+\end{diagram}
+
+A reason for this distinction is the following theorem.
+\begin{theorem}\label{nervetheorem} (Nerve Theorem) If $\mathcal{U}$ is a numerable good cover for $X$ then $\check{C}(\mathcal{U})$ is homotopy equivalent to $X
+$.
+\end{theorem}
+
+It follows that $H^{sin}(\check{C}(\mathcal{U})) \simeq H^{sin}(X)$. Therefore if we can find good covers $\mathcal{U}$ for $X$ then we can compute its homology by computing the homology of $\check{C}(\mathcal{U})$. In the case $X$ is a compact Riemannian manifold, they lie among the open ball covers.
+
+\begin{theorem}\label{openballcovergood} For each compact Riemannian manifold $X$ there exists an $\epsilon*$ such that $\mathcal{U}_{X, \epsilon^*}$ is a good over cover for $X$ whenever $\epsilon < \epsilon^*$.
+\end{theorem}
+
+\begin{corollary}\label{CechcomplexhomotopyequivalenttoX} For each compact Riemannian manifold $X$ there exists an $\epsilon^*$ such that $\check{C}(\mathcal{U}_{X, \epsilon})$ is homotopy equivalent to $X$ whenever $\epsilon < \epsilon^*$. Moreover, for such $\epsilon$ there exists a finite subset $V \subset X$ such that the subcomplex $\check{C}(\mathcal{U}_{V, \epsilon})$ is also homotopy equivalent to $X$.
+\end{corollary}
+\begin{proof} The first statement follows from theorem \ref{openballcovergood} and theorem \ref{nervetheorem}.
+\end{proof}
+
+\begin{example} From example \ref{coversforunitcircle} and proposition \ref{dimofcoverequalsdimofnerve} we get
+\begin{itemize}
+\item $\mathcal{U}_{V', \frac{\pi}{3}}$ is a good cover for $X$ of dimension 1.
+\item $\check{C}(\mathcal{U}_{V', \frac{\pi}{3}})$ has dimension 1 and is homotopy equivalent to $X$.
+\item $\mathcal{U}_{V', \frac{2\pi}{3}}$ is not a good cover for $X$ of dimension 2.
+\item $N(\mathcal{U}_{V', \frac{2\pi}{3}})$ has dimension 2 and is not homotopy equivalent to $X$.
+\end{itemize}
+
+One may guess $\frac{\pi}{3} < \epsilon^* < \frac{2\pi}{3}$.
+\end{example}
+
+While straightforward to obtain, a \v{C}ech complex $\check{C}(\mathcal{U}_{V, \epsilon})$ may have a lot of vertices and as well as dimension higher than that of $X$. Thus it is computationally expensive.
+
+Putting the above diagram and the diagram in example \ref{pi0ofcovers} together, we get
+\begin{diagram}
+Covers(X) & \rTo^{\pi_0} & Covers(X) \\
+ & \rdTo_{N^{\pi_0}} & \dTo^N \\
+\uTo & & ASC \\
+ & \ruTo^{\check{C}^{\pi_0}} & \uTo_{\check{C}} \\
+CoversGood(X) & \rTo_{\pi_0} & CoversGood(X)
+\end{diagram}
+
+Moreover, the map of covers $\mathcal{U}^{\pi_0} \rTo^{\varphi} \mathcal{U}$ after example \ref{pi0ofcovers} induces maps of abstract simplicial complexes $N(\mathcal{U}^{\pi_0}) \rTo^{\varphi} N(\mathcal{U})$ and $\check{C}(\mathcal{U}^{\pi_0}) \rTo^{\varphi} \check{C}(\mathcal{U})$ by covariant functoriality of $N$. Hence we get the natural transformations $N^{\pi_0} \rTo N$ and $\check{C}^{\pi_0} \rTo \check{C}$.
+
+The reason we mention $\check{C}^{\pi_0}$ is that it is even more sensitive than $\check{C}$. Specifically $\check{C}^{\pi_0}(\mathcal{U})$ is homeomorphic to $X$ while $\check{C}(\mathcal{U})$ may just be homotopy equivalent to $X$. So if $X$ has dimension $d$ then $\mathcal{U}^{\pi_0}$ and $\check{C}^{\pi_0}(\mathcal{U})$ have dimension $d$ as well.
+
+\begin{example}\label{covertocovernervetonerve} Writing the unit circle in example \ref{coversforunitcircle} as $X = \{(x, y), x^2 + y^2 = 1\} \subset \mathbb{R}^2$, one can define a third cover $\mathcal{U}'' = \{U_1'', U_2'', U_3''\}$ where
+$$U_1'' = \{(x,y), y < 0\}$$
+$$U_2'' = \{(x,y), y > 0\}$$
+$$U_3'' = \{(x,y), x \neq 0\}$$
+
+Then $\mathcal{U}''^{\pi_0} = \{U_1'', U_2'', U_{31}'', U_{32}''\}$ where
+$$U_1'' = \{(x,y), y < 0\}$$
+$$U_2'' = \{(x,y), y > 0\}$$
+$$U_{31}'' = \{(x,y), x < 0\}$$
+$$U_{32}'' = \{(x,y), x > 0\}$$
+
+One can see that
+\begin{itemize}
+\item $\mathcal{U}''$ is not a good cover of dimension 1.
+\item $N(\mathcal{U}'') = (V, \mathcal{S})$ where $V = \{1, 2, 3\}$ and $\mathcal{S} = \{\{1\}, \{2\}, \{3\}, \{1, 3\}, \{2, 3\}\}$ is of dimension 1 and not homotopy equivalent to $X$. It looks like
+\begin{diagram}
+ & & 2 \\
+ & & \dLine \\
+1 & \rLine & 3
+\end{diagram}
+\item $\mathcal{U}''^{\pi_0}$ is a good cover of dimension 1.
+\item $N(\mathcal{U}''^{\pi_0}) = \check{C}(\mathcal{U}''^{\pi_0}) = \check{C}^{\pi_0}(\mathcal{U}'') = (A^{\pi_0}, S^{\pi_0})$ where $V^{\pi_0} = \{1, 2, 31, 32\}$ and $\mathcal{S}^{\pi_0} = \{\{1\}, \{2\}, \{31\}, \{32\}, \{1, 31\}, \{1, 32\}, \{2, 31\}, \{2, 32\}\}$ is of dimension 1 and homeomorphic to $X$. It looks like
+\begin{diagram}
+31 & \rLine & 2 \\
+\dLine & & \dLine \\
+1 & \rLine & 32
+\end{diagram}
+\item the map of covers $\mathcal{U}''^{\pi_0} \rTo^{\varphi} \mathcal{U}''$ that is
+\begin{align*}
+A^{\pi_0} & \rTo^{\varphi} A \\
+1 & \mapsto 1 \\
+2 & \mapsto 2 \\
+31 & \mapsto 3 \\
+32 & \mapsto 3
+\end{align*}
+induces the same map of abstract simplicial complexes $N(\mathcal{U}''^{\pi_0}) \rTo^{\varphi} N(\mathcal{U}'')$.
+\end{itemize}
+\end{example}
+
+\subsection{Vietoris-Rips Complex}\label{Vietoris-Ripscomplex} If we can construct an abstract simplicial complex homotopy equivalent to $X$ without going through a good cover then that will also be useful. To do that, we modify the \v{C}ech complex construction a bit. Again assume that $X$ has a metric.
+\dfn We define the Vietoris-Rips complex $VR(X, \epsilon)$ of $X$ attached to $\epsilon$ to be the abstract simplicial complex $(X, \mathcal{S})$ where $S = \{v_0, \dots , v_k\} \in \mathcal{S}$ if and only if $d(v_i, v_j) \leq \epsilon$ for all $i, j$.
+
+Here is a comparison.
+\begin{proposition}\label{mapofVietoris-Ripscomplexes} For $\epsilon < \epsilon'$, there exists a map of abstract simplicial complexes $VR(X, \epsilon) \rTo^{\varphi} VR(X, \epsilon')$.
+\end{proposition}
+\begin{proof} Surely $d(v_i, v_j) \leq \epsilon$ implies $d(v_i, v_j) \leq \epsilon'$, se we can take $X \rTo^{\varphi} X, x \mapsto x$.
+\end{proof}
+
+Here is another comparison.
+\begin{proposition}\label{mapsofCechcomplexVietoris-Ripscomplex} For $\epsilon$ such that $\mathcal{U}_{X, \epsilon}$ is a good cover for $X$, we have
+$$\check{C}(X, \epsilon) \rTo^{\varphi_{\epsilon}} VR(X, 2\epsilon) \rTo^{\varphi_{\epsilon}'} \check{C}(X, 2\epsilon)$$
+\end{proposition}
+\begin{proof} One can see this by looking at balls of radius $\epsilon$ in $X$ and balls whose centers are $2\epsilon$ apart.
+\end{proof}
+
+This means the Vietoris-Rips subcomplex is less computationally expensive than the \v{C}ech complex and we can use it as a substitute to get the same information on $X$, though both still have the same set of vertices $\mathcal{S}_0 = X$.
+
+\subsection{Delaunay Complex} From the open cell cover $\mathcal{U}_V$ in example \ref{opencellcover}, we get another abstract simplicial complex.
+
+\dfn We define the Delaunay complex $D(V)$ of $X$ attached to $V$ to be the nerve $N(\mathcal{U}_V)$.
+
+While the \v{C}ech complex construction and the Vietoris-Rips complex construction above often produce complexes of dimensions higher than that of $X$, this Delaunay complex construction often produces a complex of dimension equal to the dimension of $X$. So for finite metric space $X$, it often produces complexes of dimension 0, with $\mathcal{S}_k = \emptyset, k \geq 1$. The reason is $x \in U_v \cap U_{v'}$ nonempty requires that $d(x, v) = d(x, v')$ and this rarely ever happens.
+
+\subsection{Strong Witness Complex} We modify the Delaunay complex construction by introducing a little margin $\epsilon$.
+\dfn We define the strong witness complex $W^s(V, \epsilon)$ of $X$ attached to $V, \epsilon$ to be the abstract simplicial complex $(V, \mathcal{S})$ where $S = \{v_0, \dots , v_k\} \in \mathcal{S}$ if and only if there exists an $x \in X$ such that $\max\limits_{v_i \in S} \{d(x, v_i)\} \leq \min\limits_{v \in V} \{d(x, v)\} + \epsilon$.
+
+Such point $x$ acts as a witness to points in $S$, hence the name strong witness complex.
+\dfn We define the Vietoris-Rips strong witness complex $W_{RV}^s(V, \epsilon)$ of $X$ attached to $V, \epsilon$ to be the subcomplex of $W^s(V, \epsilon)$ where
+\begin{align*}
+\mathcal{S}_0(W_{RV}^s(V, \epsilon)) & = \mathcal{S}_0(W^s(V, \epsilon)) \\
+\mathcal{S}_1(W_{RV}^s(V, \epsilon)) & = \mathcal{S}_1(W^s(V, \epsilon)) \\
+\mathcal{S}_k(W_{RV}^s(V, \epsilon)) & = \{\{v_0, \dots , v_k\} \subset V, \{v_i, v_j\} \in \mathcal{S}_1(W^s(V, \epsilon)) \text{ for all } i, j\}
+\end{align*}
+
+\subsection{Weak Witness Complex} We can also weaken the witness requirement in the definition of a strong witness complex a bit.
+\dfn We define the weak witness complex $W^w(V, \epsilon)$ of $X$ attached to $V, \epsilon$ to be the abstract simplicial complex $(V, \mathcal{S})$ where $S = \{v_0, \dots , v_k\} \in \mathcal{S}$ if and only if there exists an $x \in X$ such that $\max\limits_{v_i \in S} \{d(x, v_i)\} \leq \min\limits_{v \in V \backslash S} \{d(x, v)\} + \epsilon$.
+
+Such point $x$ acts as a weak witness to points in $S$, hence the name weak witness complex.
+\dfn We define the Vietoris-Rips weak witness complex $W_{RV}^w(V, \epsilon)$ of $X$ attached to $V, \epsilon$ to be the subcomplex of $W^w(V, \epsilon)$ where
+\begin{align*}
+\mathcal{S}_0(W_{RV}^w(V, \epsilon)) & = \mathcal{S}_0(W^w(V, \epsilon)) \\
+\mathcal{S}_1(W_{RV}^w(V, \epsilon)) & = \mathcal{S}_1(W^w(V, \epsilon)) \\
+\mathcal{S}_k(W_{RV}^w(V, \epsilon)) & = \{\{v_0, \dots , v_k\} \subset V, \{v_i, v_j\} \in \mathcal{S}_1(W^w(V, \epsilon)) \text{ for all } i, j\}
+\end{align*}
+
+Here are more comparisons.
+\begin{proposition}\label{mapsofwitnesscomplexes} For $\epsilon < \epsilon'$ and $V \subset X$, there exist maps of abstract simplicial complexes
+$$W^s(V, \epsilon) \rTo W^s(V, \epsilon')$$
+$$W_{RV}^s(V, \epsilon) \rTo W_{RV}^s(V, \epsilon')$$
+$$W^w(V, \epsilon) \rTo W^w(V, \epsilon')$$
+$$W_{RV}^w(V, \epsilon) \rTo W_{RV}^w(V, \epsilon')$$
+\end{proposition}
+\begin{proof} Straightforward from their definitions.
+\end{proof}
+
+\subsection{Mayer-Vietoris Blowup} For each topological space $X$ and its finite cover $\mathcal{U} = \{U_{\alpha}\}_{v \in V}$, we have the Mayer-Vietoris blowup
+$$MV(\mathcal{U}) = \bigcup\limits_{\emptyset \neq S \subset V} \left(c(S) \times \left(\bigcap\limits_{v \in S} U_v \right)\right)$$
+where $c(S) \subset \mathbb{R}^n$ is the convex hull spanned by $e_v, v \in S$ as defined earlier. So we have
+\begin{diagram}
+ & & c(V) \times X & & \\
+ & \ldTo^{\pi_1} & \uTo^i & \rdTo^{\pi_2} & \\
+c(V) & \lTo^{p_1} & MV(\mathcal{U}) & \pile{\rTo^{p_2} \\ \lTo_{p_2^{-1}}} & X \\
+ & \luTo_i & \dTo^{p_1} & \ldTo_c & \\
+ & & N(\mathcal{U}) & &
+\end{diagram}
+
+The map $p_1$ is a homotopy equivalence onto its image $N(\mathcal{U})$. The map $p_2$ is a homotopy equivalence when $X$ has the homotopy type of a finite complex. Using a partition of unity subordinate to $\mathcal{U}$, one can give its inverse $X \rTo^{p_2^{-1}} MV(\mathcal{U})$. The composition $c = p_1p_2^{-1}$ is a kind of coordinatization of $X$, beside the usual coordinatizations $X \rTo^c \mathbb{R}^n$.
+
+This construction defines a covariant functor
+\begin{align*}
+Covers(X) & \rTo^{MV} ASC \\
+\mathcal{U} & \mapsto MV(\mathcal{U})
+\end{align*}
+
+The maps $MV(\mathcal{U}) \rTo^{p_{1\mathcal{U}}} N(\mathcal{U})$ above now define a natural transformation $MV \rTo^{p_1} N$.
+Meanwhile, the maps $MV(\mathcal{U}) \rTo N^{\pi_0}(\mathcal{U})$ induced by the projections $U_v \rTo \pi_0(U_v), v \in V$ define a natural transformation $MV \rTo N^{\pi_0}$. Together with the natural transformation $N^{\pi_0} \rTo N$ in the previous section, we get a commutative diagram
+\begin{diagram}
+MV & \rTo & N^{\pi_0} & & & MV(\mathcal{U}) & \rTo & N^{\pi_0}(\mathcal{U}) \\
+\dTo^{p_1} & \ldTo & & & & \dTo^{p_{1\mathcal{U}}} & \ldTo & \\
+N & & & & & N(\mathcal{U}) & & 
+\end{diagram}
+
+When $\mathcal{U}$ is good then just replace $N$ with $\check{C}$ and $N^{\pi_0}$ with $\check{C}^{\pi_0}$
+\begin{diagram}
+MV & \rTo & \check{C}^{\pi_0} & & & MV(\mathcal{U}) & \rTo & \check{C}^{\pi_0}(\mathcal{U}) \\
+\dTo^{p_1} & \ldTo & & & & \dTo^{p_{1\mathcal{U}}} & \ldTo & \\
+\check{C} & & & & & \check{C}(\mathcal{U}) & & 
+\end{diagram}
+
+In summary, we have
+\begin{diagram}
+Covers(Y) & \rTo^{f^*} & Covers(X) & \rTo^{\pi_0} & Covers(X) \\
+ & & & \rdTo_{N^{\pi_0}} & \dTo^N \dTo_{MV} \\
+\uTo & & \uTo & & ASC \\
+ & & & \ruTo^{\check{C}^{\pi_0}} & \uTo^{\check{C}} \uTo_{MV} \\
+CoversGood(Y) & \rNto & CoversGood(X) & \rTo_{\pi_0} & CoversGood(X)
+\end{diagram}
+
+\section{Clusters}\label{clusters} If $X$ is a finite metric space with the discrete topology then a few things above become trivial and we will not get anything useful. For example, the discrete cover $\mathcal{U}^* = \{x\}_{x \in X}$ is the only good cover for $X$. Or if $\mathcal{U}$ is a cover for $X$ then $\mathcal{U}^{\pi_0} = \mathcal{U}^*$ and $N^{\pi_0}(\mathcal{U}) = (X, \mathcal{S})$ where $\mathcal{S} = \mathcal{S}_0 = X$. So we repeat the above discussion with the following adjustments.
+
+Let $FMS$ be the subcategory of the category $Top$ whose objects are finite metric spaces $X$ and whose morphisms are liner preserving maps between them. Note that $FMS$ is not a full subcategory of $Top$, and that liner preservation implies injectivity and so these maps are embeddings.
+\dfn A partition $\mathcal{U}$ for $X$ is a collection $\{U_{\alpha}\}_{\alpha \in A}$ of subsets $U_{\alpha}$ such that $X = \bigcup\limits_{\alpha \in A} U_{\alpha}$ and $U_{\alpha} \cap U_{\alpha'} = \emptyset$ for all $\alpha, \alpha' \in A$.
+
+Naturally a partition $\mathcal{U}$ for $X$ is called a subpartition of another partition $\mathcal{U}'$ if $\mathcal{U} \subset \mathcal{U}'$.
+
+The set of all partitions $\mathcal{U} = \{U_{\alpha}\}_{\alpha \in A}$ for $X$ form a category $Parts(X)$ whose morphisms $\{U_{\alpha}\}_{\alpha \in A} \rTo^{\theta} \{U_{\alpha'}'\}_{\alpha' \in A'}$ are all maps of sets
+\begin{align*}
+A & \rTo^{\varphi} A' \\
+\alpha & \mapsto \varphi(\alpha)
+\end{align*}
+such that $U_{\alpha} \subset U_{\varphi(\alpha)}'$ for all $\alpha \in A$. If such $\varphi$ exists then $\mathcal{U}$ is called a refinement of $\mathcal{U}'$. Surely every subpartition is a refinement while the converse may not be true.
+
+Under the discrete topology, every subset is open so each partition for $X$ is a cover. Thus the category $Parts(X)$ is a full subcategory of the category $Covers(X)$
+$$Parts(X) \rTo Covers(X)$$
+
+The set of all categories $Parts(X), X \in FMS$ form a category $Parts$ whose morphisms are covariant functors between those categories. There is a contravariant functor
+$$FMS \rTo Parts$$
+\begin{diagram}
+X & \rMapsto & Parts(X) \\
+\dTo^f & & \uTo_{f^*} \\
+Y & \rMapsto & Parts(Y) 
+\end{diagram}
+where the covariant functor $f^*$ does
+\begin{diagram}
+\{V_{\beta}\}_{\beta \in B} & \rMapsto^{f^*} & \{f^{-1}(V_{\beta})\}_{\beta \in B} \\
+\dTo^{\varphi} & & \dTo_{\varphi} \\
+\{V_{\beta'}'\}_{\beta' \in B'} & \rMapsto^{f^*} & \{f^{-1}(V_{\beta'}')\}_{\beta' \in B'}
+\end{diagram}
+
+Though we never spoke about cover schemes that would create covers for all $X \in Top$, we speak about clustering schemes that create partitions for $X \in FMS$ here.
+\dfn\label{functorialclusteringscheme} A map $FMS \rTo^c \bigsqcup\limits_{X \in FMS} Parts(X), X \mapsto \{U_{\alpha}\}_{\alpha \in A} \in Parts(X)$ is called a clustering scheme. It is called functorial if for each morphism $X \rTo^f Y$ there exists a map of partitions $\{U_{\alpha}\}_{\alpha \in A} \rTo^{\varphi} \{f^{-1}(V_{\beta})\}_{\beta \in B}$ for $X$.
+
+So $c$ is functorial if for each morphism $X \rTo^f Y$ there exists a map of sets $A \rTo^{\varphi} B, \alpha \mapsto \varphi(\alpha)$ such that $U_{\alpha} \subset f^{-1}(V_{\varphi(\alpha)})$, or equivalently $f(U_{\alpha}) \subset V_{\varphi(\alpha)}$ and the clusters of $X$ map to subsets of the clusters of $Y$
+\begin{diagram}
+X & \rMapsto^c & \{U_{\alpha}\}_{\alpha \in A} & \rTo^{\varphi} & \{f^{-1}(V_{\beta})\}_{\beta \in B} \\
+\dTo^f & & & & \uTo_{f^*} \\
+Y & \rMapsto^c & & & \{V_{\beta}\}_{\beta \in B}
+\end{diagram}
+
+In particular, if $U \subset U'$ are subsets of $X$ then the clusters of $U$ stay intact inside the clusters of $U'$. We will need this in section \ref{mapper}.
+
+\begin{example}\label{singlelinkageclustering} (Single Linkage Clustering) For $\epsilon \geq 0$, we define an equivalence relation
+$$x \sim x' \text{ if } d(x, x') \leq \epsilon$$
+to partition any finite metric space $X$ into clusters $\{U_{\alpha}\}_{\alpha \in A}$. This equivalence relation defines a clustering scheme
+\begin{align*}
+FMS & \rTo^{c_{\epsilon}} \bigsqcup\limits_{X \in FMS} Parts(X) \\
+X & \mapsto \{U_{\alpha}\}_{\alpha \in A}
+\end{align*}
+
+It is clear that the clusters $\{U_{\alpha}\}_{\alpha \in A}$ correspond precisely to the connected components in $VR(X, \epsilon)$. Moreover, if $X \rTo^f Y$ is a morphism and $x \sim x'$ then $f(x) \sim f(x')$ and the clusters of $X$ map to subsets of the clusters of $Y$. So this clustering scheme is functorial.
+\end{example}
+
+\begin{example} (DBSCAN) For $\epsilon \geq 0, N > 0$, we say $x$ can reach $x'$ directly if $U_{x, \epsilon} \owns x'$ and $|U_{x, \epsilon}| > N$. Next we say $x$ can reach $x'$ if there exists a chain $x_1, \dots , x_n$ such that $ x_1 = x, x_n = x'$ and $x_i$ can reach $x_j$ directly. Now we define an equivalence relation
+$$x \sim x' \text{ if there exists an } x^* \text{ that can reach both } x \text{ and } x'$$
+to partition any finite metric space $X$ into clusters $\{U_{\alpha}\}_{\alpha \in A}$. This equivalence relation defines a clustering scheme
+\begin{align*}
+FMS & \rTo^{c_{\epsilon, N}} \bigsqcup\limits_{X \in FMS} Parts(X) \\
+X & \mapsto \{U_{\alpha}\}_{\alpha \in A}
+\end{align*}
+
+One can verify that this clustering scheme is...
+\end{example}
+
+\begin{example} ($k$-Means Clustering) One can describe $k$-means clustering as the clustering scheme
+\begin{align*}
+FMS & \rTo^c \bigsqcup\limits_{X \in FMS} Parts(X) \\
+X & \mapsto \argmin\limits_{\{U_{\alpha}\}_{\alpha = 1}^k \in Parts(X)} \Big\{\sum\limits_{\alpha = 1}^k \sum\limits_{x \in U_{\alpha}} d(x - c_{U_{\alpha}})^2 \Big\}
+\end{align*}
+where $c_{U_{\alpha}}$ is the centroid of $U_{\alpha}$. Defining centroid for a subset in $\mathbb{R}^n$ is easy and one can adapt it for general metric spaces as well. One can verify that this clustering scheme is...
+\end{example}
+
+\begin{example}\label{cofcovers} Let $c$ be a functorial clustering scheme. For each cover $\{U_{\alpha}\}_{\alpha \in A}$ for $X$, we can define another cover $\mathcal{U}^c = \{U_{\alpha \beta}\}_{\alpha \in A, \beta \in B_{\alpha}}$ by breaking each $U_{\alpha} = \bigsqcup\limits_{\beta \in B_{\alpha}} U_{\alpha \beta}$ into its clusters.
+\end{example}
+
+The map
+\begin{align*}
+A \times \bigsqcup\limits_{\alpha \in A} B_{\alpha} & \rTo^{\varphi} A \\
+(\alpha, \beta) & \mapsto \alpha
+\end{align*}
+is a map of covers $\mathcal{U}^c \rTo^{\varphi} \mathcal{U}$ for $X$. Thus this procedure defines a covariant functor
+\begin{diagram}
+Covers(X) & \rTo^c & Covers(X) & & & \mathcal{U} & \rMapsto & \mathcal{U}^c \\
+\uTo & & \uTo & & & & & \\
+Parts(X) & \rTo^c & Parts(X) & & & & &
+\end{diagram}
+
+Though it may not map covers to partitions, it does map partitions to partitions.
+
+In summary, we have
+\begin{diagram}
+Covers(Y) & \rTo^{f^*} & Covers(X) & \rTo^c & Covers(X) \\
+ & & & \rdTo_{N^c} & \dTo^N \dTo_{MV} \\
+\uTo & & \uTo & & ASC \\
+ & & & \ruTo^{\check{C}^c} & \uTo^{\check{C}} \uTo_{MV} \\
+CoversGood(Y) & \rNto & Parts(X) & \rTo_c & Parts(X)
+\end{diagram}
+
+\section{Simplicial Homology}\label{simplicialhomology} The theory of simplicial homology is already well developed.
+$$ASC \rTo^{C_{\bullet}} CMod_R \rTo^{H_k} Mod_R$$
+\begin{diagram}
+(V, \mathcal{S}) & \rMapsto & C_{\bullet}(V, \mathcal{S}) & \rMapsto & H_k(C_{\bullet}(V, \mathcal{S})) \\
+\dTo^f & & \dTo^f & & \dTo_{f_*} \\
+(V', \mathcal{S}') & \rMapsto & C_{\bullet}(V', \mathcal{S}') & \rMapsto & H_k(C_{\bullet}(V', \mathcal{S}'))
+\end{diagram}
+
+Here
+\begin{itemize}
+\item $ASC$ is the category of abstract simplicial complexes.
+\item $CMod_R$ is the category of chain complexes of $R$-modules.
+\item $Mod_R$ is the category of $R$-modules.
+\item $R$ is any commutative ring of coefficients.
+\end{itemize}
+
+We provide some details about the map $C_{\bullet}$ above. For each abstract simplicial complex $(V, \mathcal{S})$, one can construct a chain complex $C_{\bullet}(V, \mathcal{S})$ of $R$-modules
+$$\dots \rTo C_k(V, \mathcal{S}) \rTo^{\partial_k} C_{k-1}(V, \mathcal{S}) \rTo^{\partial_{k-1}} C_{k-2}(V, \mathcal{S}) \rTo \dots \rTo C_0(V, \mathcal{S}) \rTo 0$$
+as follows
+\begin{itemize}
+\item $C_k(V, \mathcal{S}) = F(\mathcal{S}_k, R)$ the free module generated by $\mathcal{S}_k$ over $R$.
+\item $\mathcal{S}_k \rTo^{\partial_k} \mathcal{S}_{k-1}, \{v_0, \dots , v_k\} \mapsto \sum \limits_{i = 0}^k (-1)^i \{v_0, \dots , v_k\} \backslash \{v_i\}$ and extended linearly.
+\end{itemize}
+
+One can verify that $\partial_k \partial_{k-1} = 0$ so $C_{\bullet}(V, \mathcal{S})$ is indeed a chain complex. Moreover, using basis $\mathcal{S}_k$ for $C_k(V, \mathcal{S})$ and basis $\mathcal{S}_{k-1}$ for $C_{k-1}(V, S)$ we can represent the linear maps $\partial_k$ as matrices $M_k$ and they will be used in the programmable computation of the homology groups $H_k(C_{\bullet}(V, \mathcal{S}))$.
+
+\begin{example} Consider $(V, \mathcal{S})$ where $V = \{v_0, v_1, v_2, v_3\}$ and $\mathcal{S} = \mathcal{S}_0 \bigsqcup \mathcal{S}_1 \bigsqcup \mathcal{S}_2$ where
+$$\mathcal{S}_0 = \{v_0, v_1, v_2, v_3\}$$
+$$\mathcal{S}_1= \{\{v_0, v_1\}, \{v_0, v_2\}, \{v_0, v_3\}, \{v_1, v_2\}, \{v_1, v_3\}\}$$
+$$\mathcal{S}_2 = \{\{v_0, v_1, v_2\}, \{v_0, v_1, v_3\}\}$$
+
+Then we have
+\begin{align*}
+\mathcal{S}_1 & \rTo^{\partial_1} \mathcal{S}_0 \\
+\{v_0, v_1\} & \mapsto v_1 - v_0 \\
+\{v_0, v_2\} & \mapsto v_2 - v_0 \\
+\{v_0, v_3\} & \mapsto v_3 - v_0 \\
+\{v_1, v_2\} & \mapsto v_2 - v_1 \\
+\{v_1, v_3\} & \mapsto v_3 - v_1 \\
+\mathcal{S}_2 & \rTo^{\partial_2} \mathcal{S}_1 \\
+\{v_0, v_1, v_2\} & \mapsto \{v_1, v_2\} - \{v_0, v_2\} + \{v_0, v_1\} \\
+\{v_0, v_1, v_3\} & \mapsto \{v_1, v_3\} - \{v_0, v_3\} + \{v_0, v_1\}
+\end{align*}
+
+If we let $\mathcal{S}_0, \mathcal{S}_1$ and $\mathcal{S}_3$ be bases for $C_0(V, \mathcal{S}), C_1(V, \mathcal{S})$ and $C_2(V, \mathcal{S})$ then
+$$M_{\partial_1} = \left(\begin{array}{ccccc} -1 & -1 & -1 & 0 & 0 \\ 1 & 0 & 0 & -1 & -1 \\ 0 & 1 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 & 1 \end{array}\right)$$
+$$M_{\partial_2} = \left(\begin{array}{cc} 1 & 1 \\ -1 & 0 \\ 0 & -1 \\ 1 & 0 \\ 0 & 1 \end{array}\right)$$
+and $M_{\partial_1} M_{\partial_2} = 0$ as expected.
+\end{example}
+
+We also provide some details about the map $H_k$. The fact that $\partial_{k-1}\partial_k = 0$ in any chain complex $C$ means $im(\partial_k) \subset ker(\partial_k)$ and we define
+$$H_k(C) = ker(\partial_{k-1})/im(\partial_k)$$
+
+The elements in $ker(\partial_{k-1})$ are called cycles. The elements in $im(\partial_k)$ are called boundaries. The elements in $H_k(C)$ are called homology classes.
+
+\begin{theorem}\label{homologyabstractsimplicialcomplex} For each abstract simplicial complex $(V, \mathcal{S})$, $H_k(C_{\bullet}(V, \mathcal{S}))$ is isomorphic to the singular homology $H_k^{sin}(|V, \mathcal{S}|)$ of its associated space $|V, \mathcal{S}|$.
+\end{theorem}
+
+Theorem \ref{homologyabstractsimplicialcomplex} means if we want to compute the singular homology of $X$, build an abstract simplicial complex that is homotopy equivalent to $X$ and compute the programmably computable last term
+$$H^{sin}_k(X) \simeq H^{sin}_k(|V, \mathcal{S}|) \simeq H_k(C_{\bullet}(V, \mathcal{S}))$$
+
+\section{Persistence Objects} Let $POS$ be the category whose objects are partially ordered sets $\mathcal{P}$ and whose morphisms are order preserving maps between them. Each partially ordered set $\mathcal{P}$ itself can be regarded as a category whose objects are the elements $p \in \mathcal{P}$ and there is a unique morphism $p \rTo p'$ if $p \leq p'$. In this view, the order preserving maps between two partially ordered sets are the functors between them.
+
+\begin{example}\label{orderpreservingmap1} Both $\mathbb{N}$ and $\mathbb{R}$ are partially ordered sets under the usual orderings. For $\epsilon > 0$, the map $\mathbb{N} \rTo^{f_{\epsilon}} \mathbb{R}, n \mapsto n \epsilon$ is an order preserving map between them.
+\end{example}
+\begin{example}\label{orderpreservingmap2} For a finite metric space $X$ with cover $\mathcal{U}_{X, \epsilon}$, there are only finitely many $\epsilon$ such that $N(\mathcal{U}_{X, \epsilon'}) \not\simeq N(\mathcal{U}_{X, \epsilon''})$ for $\epsilon' < \epsilon < \epsilon''$. These are called transition values and indexed $\epsilon_0, \dots , \epsilon_N$ in increasing order. The map
+\begin{align*}
+\mathbb{N} & \rTo^f \mathbb{R} \\
+n & \mapsto \begin{cases} \epsilon_n \text{ if } n < N \\ \epsilon_N \text{ otherwise }\end{cases}
+\end{align*} 
+is an order preserving map.
+\end{example}
+
+\dfn\label{persistenceobject} A persistence object from a partially ordered set $\mathcal{P}$ to a category $\mathcal{C}$ is a covariant functor
+$$\mathcal{P} \rTo^P \mathcal{C}$$
+\begin{diagram}
+p & \rMapsto & P(p) \\
+\dTo & & \dTo_{\psi_{p,p'}} \\
+p' & \rMapsto & P(p')
+\end{diagram}
+
+The name {\it persistence} refers to the perception that some elements in $P(p)$ persist as $p$ increases. The set of all persistence objects from $\mathcal{P}$ to $\mathcal{C}$ form a category $Per(\mathcal{P}, Mod_R)$ whose morphisms are natural transformations between them. The word {\it object} at this time is just a place holder. Once the category $\mathcal{C}$ is known, the name of the objects in $\mathcal{C}$ will go there.
+
+\begin{example}\label{persistenceset} The filtration of open intervals
+$$\dots \rTo (-\infty, s) \rTo (-\infty, s') \rTo (-\infty, s'') \rTo \dots$$
+defines a persistence set
+\begin{align*}
+\mathbb{R} & \rTo^P Open(\mathbb{R}) \\
+s & \mapsto (-\infty, s)
+\end{align*}
+
+If $X \rTo^f \mathbb{R}$ is a continuous map then it induces the filtration of lower level sets
+$$\dots \rTo f^{-1}((-\infty, s)) \rTo f^{-1}((-\infty, s')) \rTo f^{-1}((-\infty, s'')) \rTo \dots$$
+which defines a persistence set
+\begin{align*}
+\mathbb{R} & \rTo^P Open(\mathbb{R}) \rTo^{f^{-1}} Open(X) \\
+s & \mapsto (-\infty, s) \mapsto f^{-1}((-\infty, s))
+\end{align*}
+\end{example}
+
+\begin{example}\label{persistencecoverforR} From example \ref{mapofcoversforR2}, the filtration of covers for $\mathbb{R}$
+$$\dots \rTo \mathcal{V}^{r, \epsilon} \rTo \mathcal{V}^{2r, \epsilon} \rTo \mathcal{V}^{4r, \epsilon} \rTo \dots$$
+defines a persistence cover
+\begin{align*}
+\mathbb{N}^+ & \rTo^P Covers(\mathbb{R})) \\
+n & \mapsto \mathcal{V}^{nr, \epsilon}
+\end{align*}
+\end{example}
+
+\begin{example}\label{persistencecoverforX} From example \ref{openballcover}, the filtration of covers for $X$
+$$\dots \rTo \mathcal{U}_{V, \epsilon} \rTo \mathcal{U}_{V, \epsilon'} \rTo \mathcal{U}_{V, \epsilon''} \rTo \dots$$
+defines a persistence cover
+\begin{align*}
+\mathbb{R}^+ & \rTo^P Covers(X) \\
+\epsilon & \mapsto \mathcal{U}_{V, \epsilon}
+\end{align*}
+
+And if the $\epsilon$ above is less then the $\epsilon^*$ in theorem \ref{openballcovergood} then we are looking at a filtration of good covers and a persistence good cover
+\begin{align*}
+(0, \epsilon^*] & \rTo^P CoversGood(X) \\
+\epsilon & \mapsto \mathcal{U}_{V, \epsilon}
+\end{align*}
+\end{example}
+
+Given a persistence cover $\mathcal{P} \rTo^P Covers(Y)$ and a continuous map $X \rTo^f Y$, we get a persistence cover $f^*P$
+\begin{diagram}
+X & & & & & Covers(X) \\
+\dTo^f & & & & \ruTo^{f^*P} & \uTo_{f^*} \\
+Y & & & \mathcal{P} & \rTo^P & Covers(Y)
+\end{diagram}
+
+\begin{example}\label{persistencecoverforX} From example \ref{persistencecoverforR}, the persistence cover $P$ and a continuous map $X \rTo^f \mathbb{R}$ give a persistence cover $\mathbb{N}^+ \rTo^{f^*P} Covers(X)$.
+\end{example}
+
+Given a persistence cover $\mathcal{P} \rTo^P Covers(X)$, we get persistence complexes
+$$\mathcal{P} \rTo^P Covers(X) \pile{\rTo^N \\ \rTo_{N^{\pi_0}}} ASC$$
+with natural transformation $N^{\pi_0}P \rTo NP$.
+
+\begin{example}\label{persistencecomplex1} From the persistence cover $P$ in example \ref{persistencecoverforR}, we get persistence complexes
+\begin{align*}
+\mathbb{N}^+ & \rTo^{NP} ASC \\
+\epsilon & \mapsto N(\mathcal{V}^{nr, \epsilon})
+\end{align*}
+\begin{align*}
+\mathbb{N}^+ & \rTo^{N^{\pi_0}P} ASC \\
+\epsilon & \mapsto N^{\pi_0}(\mathcal{V}^{nr, \epsilon})
+\end{align*}
+\end{example}
+
+\begin{example}\label{persistencecomplex2} From the persistence cover $P$ in example \ref{persistencecoverforX}, we get persistence complexes
+\begin{align*}
+\mathbb{R}^+ & \rTo^{NP} ASC \\
+\epsilon & \mapsto N(\mathcal{U}_{V, \epsilon})
+\end{align*}
+\begin{align*}
+\mathbb{R}^+ & \rTo^{N^{\pi_0}P} ASC \\
+\epsilon & \mapsto N^{\pi_0}(\mathcal{U}_{V, \epsilon})
+\end{align*}
+or persistence complexes
+\begin{align*}
+(0, \epsilon^*] & \rTo^{\check{C}P} ASC \\
+\epsilon & \mapsto \check{C}(\mathcal{U}_{V, \epsilon})
+\end{align*}
+\begin{align*}
+(0, \epsilon^*] & \rTo^{\check{C}^{\pi_0}P} ASC \\
+\epsilon & \mapsto \check{C}^{\pi_0}(\mathcal{U}_{V, \epsilon})
+\end{align*}
+\end{example}
+
+\begin{example}\label{persistencecomplex3} From proposition \ref{mapofVietoris-Ripscomplexes}, the filtration of Vietoris-Rips complexes
+$$\dots \rTo \mathcal{V}^{r, \epsilon} \rTo \mathcal{V}^{r, \epsilon'} \rTo \mathcal{V}^{r, \epsilon''} \rTo \dots$$
+defines a persistence complex
+\begin{align*}
+\mathbb{R}^+ & \rTo^Q ASC \\
+\epsilon & \mapsto \mathcal{V}^{r, \epsilon}
+\end{align*}
+
+From proposition \ref{mapsofCechcomplexVietoris-Ripscomplex}, the maps $\varphi_{\epsilon}$ and $\varphi_{\epsilon}'$ define natural transformations $NP \rTo^{\{\varphi_{\epsilon}\}_{\epsilon \in \mathbb{R}^+}} Q$ and $NP \lTo^{\{\varphi_{\epsilon}'\}_{\epsilon \in \mathbb{R}^+}} Q$.
+\end{example}
+
+\begin{example}\label{persistencecomplex4} From proposition \ref{mapsofwitnesscomplexes}, the filtration of strong witness complexes
+$$\dots \rTo W^s(X, \epsilon) \rTo W^s(X, \epsilon') \rTo W^s(X, \epsilon'') \rTo \dots$$
+defines a persistence complex
+\begin{align*}
+\mathbb{R}^+ & \rTo^Q ASC \\
+\epsilon & \mapsto W^s(X, \epsilon)
+\end{align*}
+
+The same works for Vietoris-Rips strong witness complexes $W_{VR}^s(X, \epsilon)$, weak witness complexes $W^w(X, \epsilon)$, Vietoris-Rips weak witness complexes $W_{VR}^w(X, \epsilon)$.
+\end{example}
+
+Given a persistence complex $\mathcal{P} \rTo^P ASC$, we get a persistence chain complex
+$$\mathcal{P} \rTo^P ASC \rTo^{C_{\bullet}} CMod_R$$
+
+Continuing with this theme, we will get persistence chain complexes and persistence modules
+$$\mathcal{P} \rTo^P Covers(X) \pile{\rTo^N \\ \rTo_{N^{\pi_0}}} ASC \rTo^{C_{\bullet}} CMod_R \rTo^{H_k} Mod_R$$
+
+As the filtration of covers for $X$ becomes coarser, the filtration of abstract simplicial complexes becomes richer, for our purpose approaching the homotopy type of $X$ and the filtration of homology groups becomes closer to the singular homology group of $X$.
+
+The set of all categories $Per(\mathcal{P}, \mathcal{C}), \mathcal{P} \in POS$ form a category $Per(-, \mathcal{C})$ whose morphisms are covariant functors between those categories. There is a contravariant functor
+$$POS \rTo Per(- , \mathcal{C})$$
+\begin{diagram}
+\mathcal{P} & \rMapsto & Per(\mathcal{P}, \mathcal{C}) \\
+\dTo^f & & \uTo^{f^*} \\
+\mathcal{Q} & \rMapsto & Per(\mathcal{Q}, \mathcal{C})
+\end{diagram}
+where the covariant functor $f^*$ does
+\begin{diagram}
+Q & \rMapsto^{f^*} & Qf \\
+\dTo^{\nu} & & \dTo_{\mu} \\
+Q' & \rMapsto^{f^*} & Q'f
+\end{diagram}
+
+In details, $f^*$ maps any natural transformation $Q \rTo^{\{\nu_q\}_{q \in \mathcal{Q}}} Q'$ to the transformation $Qf \rTo^{\{\mu_p\}_{p \in \mathcal{P}}} Q'f$ where $\mu_p = \nu_{f(p)}$.
+
+\begin{example} Given a persistence object $\mathbb{R} \rTo^Q \mathcal{C}$ and an order preserving map $\mathbb{N} \rTo^f \mathbb{R}$, we get a persistence object $\mathbb{N} \rTo^f \mathbb{R} \rTo^Q \mathcal{C}$.
+\end{example}
+
+Among persistence objects, we care more about the persistence modules $Per(\mathcal{P}, Mod_R)$. In particular, we want to define
+\begin{align*}
+Per(\mathcal{P}, Mod_R) & \rTo^M Mod_R \\
+P & \mapsto M_P = \bigoplus \limits_{p \in \mathcal{P}} P(p)
+\end{align*}
+
+This $M_P$ is generally incomputable. If $\mathcal{P} = \mathbb{N}$ and $M_P = \bigoplus \limits_{n \in \mathbb{N}} P(n)$ then we can give it the obvious graded $R[x]$-module structure
+\begin{align*}
+P(n) & \rTo^{x \cdot} P(n+1) \\
+a & \mapsto x \cdot a = \psi_{n, n+1}(a)
+\end{align*}
+where $\psi_{n, n+1}$ comes from
+\begin{diagram}
+n & \rMapsto & P(n) \\
+\dTo & & \dTo_{\psi_{n, n+1}} \\
+n+1 & \rMapsto & P(n+1) \\
+\end{diagram}
+in definition \ref{persistenceobject}.
+
+\begin{theorem} The categories $Per(\mathbb{N}, Mod_R)$ and $Mod_{R[x]}$ are equivalent.
+\end{theorem}
+\begin{proof} The map
+\begin{align*}
+Per(\mathbb{N}, Mod_R) & \rTo^M Mod_{R[x]} \\
+P & \mapsto \bigoplus \limits_{n \in \mathbb{N}} P(n)
+\end{align*}
+has obvious inverse
+\begin{align*}
+Mod_{R[x]} & \rTo^{M^{-1}} Per(\mathbb{N}, Mod_R) \\
+\bigoplus \limits_{n \in \mathbb{N}} M_n & \mapsto P \text{ where } P(n) = M_n
+\end{align*}
+\end{proof}
+
+If $R = \mathbb{Z}$ then we are looking at a graded $\mathbb{Z}[x]$-module. It is still hard to compute because $\mathbb{Z}[x]$ is not a PID. But if $R = F$ a field then $R[x] = F[x]$ is a PID and the structure theorem for finitely generated modules over PID may come in handy.
+\dfn A persistence module $\mathbb{N} \rTo^P Vect_F$ is called tame if each $P(n)$ is finite-dimensional and $P(n) \rTo^{\psi_{n, n+1}} P(n+1)$ is an isomorphism for sufficiently large $n$.
+\begin{proposition}\label{tamepersistencefinitelygenerated} A persistence module $\mathbb{N} \rTo^P Vect_F$ is tame iff its associated graded $F[x]$-module $M_P$ is finitely generated.
+\end{proposition}
+\begin{proof}
+\end{proof}
+
+So we have a diagram of equivalent categories and subcategories.
+\begin{diagram}
+Per(\mathbb{N}, Vect_F) & \rTo^M & Mod_{F[x]} \\
+\uTo & & \uTo \\
+PerTame(\mathbb{N}, Vect_F) & \rTo^{M|} & ModFin_{F[x]}
+\end{diagram}
+
+\section{Persistence Homology} There is not much left to do here except definition and computation. Given a topological space $X$, we can use one of the abstract simplicial complex constructions in section \ref{abstractsimplicialcomplexes} to get
+$$\mathbb{R} \rTo^P ASC \rTo^{C_{\bullet}} CMod_R \rTo^{H_k} Vect_F$$
+
+The last ingredient is an order preserving map $\mathbb{N} \rTo^f \mathbb{R}$. If that is defined, we get a persistence module
+$$\mathbb{N} \rTo^f \mathbb{R} \rTo^P ASC \rTo^{C_{\bullet}} CMod_R \rTo^{H_k} Vect_F$$
+
+\dfn\label{persistencehomology} Given a topological space $X$ with a persistence complex $\mathbb{R} \rTo^P ASC$ and an order preserving map $\mathbb{N} \rTo^f \mathbb{R}$, we define its persistence module $P_X$ to be $H_k \circ C_{\bullet} \circ P \circ f$ and its persistence homology $H_k^{per}(X)$ to be $M_{P_X}$.
+
+This definition of persistence module and persistence homology for $X$ depends on the persistence complex $P$. If we use one of those filtrations from the abstract simplicial complex constructions in section \ref{abstractsimplicialcomplexes}, we may get something better related to $X$ because the filtration is related to the homotopy type of $X$.
+
+This definition also depends on the order preserving map $f$. If we use $f$ as in example \ref{orderpreservingmap1} then we are sampling vector spaces at equal intervals. This sampling is finer for smaller $\epsilon$. If we use $f$ as in example \ref{orderpreservingmap2} then we may get something better related to $X$ because the map is related to the structure of $X$.
+
+Lastly, this definition depends on the field $F$. In practice, $F = F_2$ is chosen.
+
+\subsection{Computation} Now comes the matter of computation.
+
+\begin{proposition}\label{Xspersistencemoduleistame} Given a finite metric space $X$ with a persistence complex $P$ and an order preserving map $f$, its persistence module $P_X$ defined in \ref{persistencehomology} is tame.
+\end{proposition}
+
+\subsubsection{via Structure Theorem} Together, proposition \ref{Xspersistencemoduleistame} and proposition \ref{tamepersistencefinitelygenerated} imply $H_k^{per}(X)$ is a finitely generated graded $F[x]$-module. The structure theorem for finitely generated modules over principal ideal domains then implies
+$$H_k^{per}(X) \simeq \bigoplus \limits_{i=1}^N x^{t_i}F[x] \oplus \left( \bigoplus \limits_{j=1}^{N'} x^{s_j} F[x]/(x^{r_j}) \right)$$
+
+Of course, this decomposition is unique up to permutation of the summands.
+
+\subsubsection{via Intervals} Another way to compute a tame persistence module is via intervals. For any interval $I \subset \mathbb{R}$, we define the persistence module
+\begin{align*}
+\mathbb{R} & \rTo^{P_I} Vect(F) \\
+r & \mapsto \begin{cases} F \text{ if } r \in I \\ 0 \text{ otherwise} \end{cases}
+\end{align*}
+
+Similarly, for any interval $0 \leq s \leq t \leq \infty$, we define the persistence module
+\begin{align*}
+\mathbb{N} & \rTo^{P_{s,t}} Vect(F) \\
+n & \mapsto \begin{cases} F \text{ if } s \leq n \leq t \\ 0 \text{ otherwise} \end{cases}
+\end{align*}
+
+These persistence modules $P_{s,t}$ are tame and their associated modules $M_{P_{s,t}}$ are irreducible finitely generated graded $F[x]$-modules. Moreover, we have the following result.
+
+\begin{proposition}\label{tamedecomposesintoinvervals} Every tame persistence module $P \in PerTame(\mathbb{N}, Vect_F)$ has the following decomposition $P \simeq \bigoplus \limits_{i = 1}^N P_{s_i, t_i}$ as persistence modules. Correspondingly, $M_P \simeq \bigoplus \limits_{i = 1}^N M_{P_{s_i, t_i}}$ as graded $F[x]$-modules.
+\end{proposition}
+
+Together, proposition \ref{Xspersistencemoduleistame} and proposition \ref{tamedecomposesintoinvervals} imply
+$$H_k^{per}(X) \simeq \bigoplus \limits_{i = 1}^N M_{P_{s_i, t_i}}$$
+
+Again this decomposition is unique up to permutation of the summands. At this point, one can compute the $M_{P_{s_i, t_i}}$ by using the Smith normal forms related to the matrices $M_k$ in section \ref{simplicialhomology}, though I have not actually seen it. 
+
+\subsection{Representation by Persistence Barcodes} The intervals $\{(s_i, t_i)\}_{i = 1}^N$ in proposition \ref{tamedecomposesintoinvervals} draw our persistence barcode. A wide bar corresponds to a homology class that lasts for a long time in the filtration of homology groups, which in turn corresponds to a significant hyperhole in $X$. On the other hand, a narrow bar corresponds to a homology class that lasts for a short time in the filtration of homology groups, which in turn corresponds to an insignificant hyperhole in $X$, perhaps one due to noise.
+
+\subsection{Multidimensional Persistence Homology} It is useful in some cases to consider $P \in Per(\mathbb{N}^m, Vect_F), m > 1$ as well. Then $M_P$ is a a finitely generated $m$-graded $F[x_1, \dots , x_m]$-module. There is no structure theorem for finitely generated $m$-graded $F[x_1, \dots , x_m]$-modules. In fact, their classification depends on $F$. However, there is the rank invariant, which has to do with Gr\"{o}bner basis.
+
+\subsection{Representation by Persistence Diagrams} some way to represent the set of rank invariants above.
+
+\subsection{Other Persistence Homology} Still it is useful in other cases to consider $P \in Per(\mathcal{P}, Vect_F)$ where $\mathcal{P}$ could be $\mathbb{N}$ with a zigzag ordering, or where $\mathcal{P}$ could be $S^1$.
+
+\section{Mapper}\label{mapper} There is not much left to do here except definition and computation.
+\dfn Given a topological space $X$ with cover $\mathcal{U}$, we define its topological Mapper $M^{\pi_0}(\mathcal{U})$ to be $N^{\pi_0}(\mathcal{U})$.
+
+If $\mathcal{U}$ is a numerable good cover for $X$ then theorem \ref{nervetheorem} tells us that $\check{C}(\mathcal{U})$ is homotopy equivalent to $X$ and $M^{\pi_0}(\mathcal{U}) = \check{C}^{\pi_0}(\mathcal{U})$ is homeomorphic to $X$. And if $X$ is a finite metric space then $M^{\pi_0}(\mathcal{U}) = N^{\pi_0}(\mathcal{U}) = (X, \mathcal{S})$ where $\mathcal{S} = \mathcal{S}_0 = X$, also homeomorphic to $X$ but offering no additional way to learn about $X$. So we switch to a functorial clustering $c$ defined in definition \ref{functorialclusteringscheme}.
+\dfn Given a finite metric space $X$ with cover $\mathcal{U}$, we define its statistical Mapper $M^c(\mathcal{U})$ to be $N^c(\mathcal{U})$.
+
+If $\mathcal{U}$ is the good cover $\mathcal{U}^*$ then again $M^c(\mathcal{U}) = N^c(\mathcal{U}) = N(\mathcal{U}^c) = N(\mathcal{U})$ is always homeomorphic to $X$. If $\mathcal{U}$ is a general cover then whether $M^c(\mathcal{U})$ is relevant to the homeomorphism class or the homotopy type of $X$ or of the topological space $\mathbb{X}$ that $X$ is sampled from depends on both $\mathcal{U}$ and $c$. As we choose different $c$, and for each $c$ choose different $\mathcal{U}$, we hope to get different approximations to $X$. To do this, we return to the diagram
+\begin{diagram}
+Covers(Y) & \rTo^{f^*} & Covers(X) & \rTo^c & Covers(X) \\
+ & & & \rdTo_{N^c} & \dTo^N \dTo_{MV} \\
+ & & & & ASC
+\end{diagram}
+
+Given a reference map $X \rTo^f Y$ and a cover $\mathcal{V}$ for the reference space $Y$, we get a statistical mapper $M^c(\mathcal{U})$
+\begin{diagram}
+\mathcal{V} & \rMapsto^{f^*} & \mathcal{U} & \rMapsto^c & \mathcal{U}^c & \rMapsto^N & M^c(\mathcal{U})
+\end{diagram}
+
+Better yet, given a filtration of covers for the reference space $Y$, we get a filtration of statistical mappers
+\begin{diagram}
+\vdots & & \vdots & & \vdots & & \vdots \\
+\dTo & & \dTo & & \dTo & & \dTo \\
+\mathcal{V} & \rMapsto & \mathcal{U} & \rMapsto & \mathcal{U}^c & \rMapsto & M^c(\mathcal{U}) \\
+\dTo & & \dTo & & \dTo & & \dTo \\
+\mathcal{V}' & \rMapsto & \mathcal{U}' & \rMapsto & \mathcal{U}'^c & \rMapsto & M^c(\mathcal{U}') \\
+\dTo & & \dTo & & \dTo & & \dTo \\
+\mathcal{V}'' & \rMapsto & \mathcal{U}'' & \rMapsto & \mathcal{U}''^c & \rMapsto & M^c(\mathcal{U}'') \\
+\dTo & & \dTo & & \dTo & & \dTo \\
+\vdots & & \vdots & & \vdots & & \vdots
+\end{diagram}
+
+As the filtration of covers for $Y$ becomes coarser, the filtration of mappers for $X$ presumably becomes finer as well and we hope to get finer approximations to $X$. Note that going from the second column to the third column uses functoriality of the clustering algorithm $c$.
+
+If the filtration of covers for $Y$ is indexed by a partially ordered set $\mathcal{P}$ then we get a persistence cover
+$$\mathcal{P} \rTo^P Covers(Y)$$
+which induces a persistence cover
+$$\mathcal{P} \rTo^P Covers(Y) \rTo^{f^*} Covers(X) \rTo^c Covers(X)$$
+and a persistence complex
+$$\mathcal{P} \rTo^P Covers(Y) \rTo^{f^*} Covers(X) \rTo^c Covers(X) \rTo^{N^c} ASC$$
+
+We hope that the features that persist through these complexes correspond to significant features in $X$.
+
+\begin{example}\label{persistencemapper} Example \ref{persistencecomplex2} gives us a persistence complex to study $X$, with a functorial clustering scheme $c$ replacing $\pi_0$. Recall that it comes from a persistence cover for $\mathbb{R}$ and a reference map $X \rTo^f \mathbb{R}$.
+\end{example}
+
+\subsection{Reference Maps for Data} Since reference maps play an important role in this Mapper method, it is worth considering a few of them.
+
+\begin{example}\label{projection} Any projection
+\begin{align*}
+X & \rTo \mathbb{R}^k \\
+x & \mapsto (x_{i_1}, \dots , x_{i_k})
+\end{align*}
+can serve as a reference map.
+\end{example}
+
+\begin{example}\label{principalcomponentprojection} Any principal component projection
+\begin{align*}
+X & \rTo \mathbb{R}^k \\
+x & \mapsto (x_{i_1}', \dots , x_{i_k}')
+\end{align*}
+can serve as a reference map.
+\end{example}
+
+\begin{example}\label{kthnearestneighbordistance} Any $k^{\text{th}}$-nearest neighbor liner
+\begin{align*}
+X & \rTo^{f_k} \mathbb{R} \\
+x & \mapsto \frac{k}{|X| d_k(x)}
+\end{align*}
+where
+\begin{align*}
+X & \rTo^{d_k} \mathbb{R} \\
+x & \mapsto \kmin\limits_{x \neq x' \in X} \{d(x, x')\}
+\end{align*}
+can serve as a nonnegative reference map.
+\end{example}
+
+\begin{example}\label{kerneldensityestimator} Any kernel density estimator
+\begin{align*}
+X & \rTo^{f} \mathbb{R} \\
+x & \mapsto \frac{1}{h |X|} \sum\limits_{x' \in X} K \left( \frac{d(x, x')}{h} \right)
+\end{align*}
+where $K$ is a kernel and $h$ is its smoothing parameter can serve as a nonnegative reference map.
+\end{example}
+
+\begin{example}\label{eccentricitymeasure} Any eccentricity measure
+\begin{align*}
+X & \rTo^{f_p} \mathbb{R} \\
+x & \mapsto \left( \frac{1}{|X|} \sum\limits_{x_i \in X} d(x, x')^p \right)^{\frac{1}{p}}
+\end{align*}
+for $1 \leq p < \infty$ and
+\begin{align*}
+X & \rTo^{f_{\infty}} \mathbb{R} \\
+x & \mapsto \max\limits_{x' \in X} \{d(x, x')\}
+\end{align*}
+for $p = \infty$ can serve as a nonnegative reference map. Those points with smallest eccentricity measurements can be thought of as the center of $X$, while those with large eccentricity measurements can be thought of as far way from the center, hence the name eccentricity measure. The Mapper output with this reference map will reflect this picture.
+\end{example}
+
+\begin{example}\label{statisticalinvariants} Some invariants such as $k^{\text{th}}$ moment or $k^{\text{th}}$ central moment in statistics.
+\end{example}
+
+Choose a reference map that is relevant to your dataset $X$.
+
+\subsection{Scales} There is also a desire to vary $\epsilon$ by $\alpha$ in the single linkage clustering of $\{f^{-1}(V_{\alpha})\}_{\alpha \in A}$ for each $X \rTo^f Y$ and cover $\{V_{\alpha}\}_{\alpha \in A}$ for $Y$ in example \ref{singlelinkageclustering}. There are of course very many ways to do so. Below is one systematic way devised by Gunnar, based on the observation that the clusters in $X$ correspond precisely to the connected components in $VR(X, \epsilon)$, which in turn relate to $H_0^{per}(C_{\bullet}(VR(X, \epsilon))) \simeq \bigoplus \limits_{i = 1}^N M_{P_{s_i, t_i}}$ and its persistence barcode.
+
+Let $B = \{\epsilon_i\}_{i = 0}^m$ be the endpoints $s_i, t_i$ of the persistence barcode reordered increasingly and let $I = \{(\epsilon_{i-1}, \epsilon_i)\}_{i=1}^m$ be the intervals. For $\epsilon_{i-1} < \epsilon < \epsilon' < \epsilon_i$, the map $VR(X, \epsilon) \rTo^{\varphi} VR(X, \epsilon')$ induces an isomorphism $H_0^{per}(C_{\bullet}(VR(X, \epsilon))) \rTo^{\varphi} H_0^{per}(C_{\bullet}(VR(X, \epsilon')))$ of the same name, which induces a bijection between the connected components of $VR(X, \epsilon)$ and the connected components of $VR(X, \epsilon')$. For this reason, each $(\epsilon_{i-1}, \epsilon_i)$ is called a stability interval for $X$.
+\dfn For each reference map $X \rTo^f Y$ and a cover $\mathcal{U} = \{U_{\alpha}\}_{\alpha \in A}$ for $Y$, we define an abstract simplicial complex $SS(f, \mathcal{U}) = (V, \mathcal{S})$ where
+\begin{itemize}
+\item $V = A \times I$ where $I$ is the set of all stability intervals for all $f^{-1}(U_{\alpha}), \alpha \in A$.
+\item $S = \{(\alpha_0, \iota_0), \dots , (\alpha_k, \iota_k)\} \in \mathcal{S}$ if
+\begin{enumerate}[1.]
+\item $U_{\alpha_0} \cap \ldots \cap U_{\alpha_k} \neq \emptyset$
+\item $\iota_0 \cap \ldots \cap \iota_k \neq \emptyset$
+\end{enumerate}
+\end{itemize}
+
+The map $A \times I \rTo^{p_1} A, (\alpha, \iota) \mapsto \alpha$ is a map of abstract simplicial complexes $SS(f, \mathcal{U}) \rTo^{p_1} \check{C}(\mathcal{U})$.
+\dfn A scale choice for $f$ and $\mathcal{U}$ is a section $\check{C}(\mathcal{U}) \rTo^s SS(f, \mathcal{U})$, that is a map $\check{C}(\mathcal{U}) \rTo^s SS(f, \mathcal{U})$ such that $p_1s = id_{\check{C}(\mathcal{U})}$.
+
+A scale choice $s$ lets us define
+\begin{align*}
+A & \rTo^{\epsilon} \mathbb{R} \\
+\alpha & \mapsto \epsilon_{\alpha} \text{ any } \epsilon_{\alpha} \in p_2s(\alpha)
+\end{align*}
+and this is one way that $\epsilon$ can vary by $\alpha$. Though there is a lot of variance in this definition, it has the following merits
+\begin{itemize}
+\item if $U_{\alpha} \cap U_{\alpha'} \neq \emptyset$ then $p_2s(\alpha) \cap p_2s(\alpha') \neq \emptyset$, so $\epsilon$ is continuous in a sense.
+\item one can compare two choices of scale $s_1, s_2$ by their stability intervals $p_2s_1(\alpha), p_2s_2(\alpha), \alpha \in A$.
+\end{itemize}
+
+\section{TDA Applications} To turn a dataset into a finite metric space, we can use one of the following metrics.
+\begin{itemize}
+\item for continuous data: try Bray Curtis liner, Canberra liner, correlation liner, cosine liner, $L^p$ liner, Manhattan liner.
+\item for boolean data: try binary Hamming liner, binary Jaccard dissimilarity, dice dissimilarity, matching dissimilarity, Rogers Tanimoto dissimilarity, Russell Rao dissimilarity.
+\item for string data: try categorical cosine liner, edit liner, Damerau Levenshtein liner, Hamming liner, Jaccard dissimilarity, Smith Waterman similarity.
+\item for image data: try image liner.
+\item for color data: try color liner.
+\end{itemize}
+
+Then we can apply any of the TDA methods to this finite metric space for any purpose we see fit. To apply the method Mapper, we can use one of the following reference maps.
+\begin{itemize}
+\item to see geometry: try projection, kernel density estimator, eccentricity measure.
+\item to differentiate groups: try principal component projection, $k^{\text{th}}$ nearest neighbor liner.
+\item to identify anomaly: try statistical invariants.
+\end{itemize}
+
+\subsection{Invariants} using persistence homology. It happens in a few cases, where by looking at the homology groups $H_k^p(X)$ one can tell the shape of our dataset $X$. It will take quite a bit of insight into the nature of the dataset, plus knowledge of the homology of the usual suspects, plus imagination.
+
+Again the workflow to use persistence homology is
+\begin{align*}\text{dataset} & \rTo \text{ finite metric space} \\
+ & \rTo \text{filtration of complexes} \\
+ & \rTo \text{persistence module as invariant} \\
+ & \rTo \text{persistence barcode/persistence diagram for visualization}
+\end{align*}
+
+Many open source softwares implement this workflow. The C++ package DIPHA is documented in \cite{DIPHA}. The R package TDA is documented in \cite{RPackageTDA}.
+
+\begin{example} See \cite[example 2.4]{CarlssonTandD}.
+\end{example}
+
+\begin{example} Persistence homology for the Iris dataset, see \cite[2.2.4]{TDAofAyasdi}.
+\end{example}
+
+\subsection{Approximations} using Mapper. It happens in many cases, where by looking at the filtration $M^c(\mathcal{U})$ one can tell the shape of our dataset $X$, its persistent features, its clusters and its tendrils.
+
+Again the workflow to use Mapper is
+\begin{align*}
+\text{dataset} & \rTo \text{ finite metric space} \\
+ & \rTo \text{reference map and filtration of covers for reference space} \\
+ & \rTo \text{filtration of covers for finite metric space} \\
+ & \rTo \text{filtration of abstract simplicial complexes as approximations} \\
+ & \rTo \text{1-skeletons of those abstract simplicial complexes as visualization}
+\end{align*}
+
+Many open source softwares implement this workflow. The Python package Mapper is documented in \cite{PythonMapper}. The R package TDAmapper is documented in \cite{TDAmapper}.
+
+If one uses the R package TDAmapper then one gives
+\begin{itemize}
+\item the reference map and its values
+\item number of intervals of the image
+\item percentage of overlapping of those intervals
+\item number of clusters of preimage of each interval
+\end{itemize}
+and one gets
+\begin{itemize}
+\item vertices
+\item samples in each vertex
+\item color of each vertex tells its level set
+\item vertices of a color / level set
+\item samples of a color / level set
+\item where samples of a label distribute
+\end{itemize}
+
+\begin{example} cross.
+\end{example}
+
+\begin{example} figure 8
+\end{example}
+
+\begin{example} sphere. Find a bivariate filter for sphere that is more effective than previously tried.
+\end{example}
+
+\begin{example} spirals.
+\end{example}
+
+\begin{example} torus.
+\end{example}
+
+\begin{example} trefoil knot.
+\end{example}
+
+
+\section{TDA for Data Science}
+
+\subsection{Unsupervised}
+
+\begin{example} One popular story is the Miller-Reaven diabetes study, in which Mapper decomposed cancer tumors into clusters, one of which had never been classified before.
+\end{example}
+
+\begin{example} Use machine learning metrics to convert dataset $X$ into a finite metric space.
+\end{example}
+
+\begin{example} Apply persistence homology to some dataset $X$ and see what happens. If we get something like
+$$H_k^p(X) = \begin{cases} F \text{ for } k = 0, 2 \\ 0 \text{ otherwise} \end{cases}$$
+$$B_k(X) = \begin{cases} 1 \text{ for } k = 0, 2 \\ 0 \text{ otherwise} \end{cases}$$
+then $X$ is the 2-sphere. In any case, we get some invariants for $X$.
+\end{example}
+
+\begin{example} Apply Mapper to some dataset $X$, color the output by labels $A_1, \dots , A_k$ and see what it shows.
+\end{example}
+
+\begin{example} Match patterns of features with patterns of dependent feature, which could help select predictive features. See \cite[3.2]{TDAofAyasdi}.
+\end{example}
+
+\begin{example} Can one represent each sample as a geometric object $X$, and use its persistent homology groups $H^p_k(X)$ as a feature?
+\end{example}
+
+\subsection{Supervised}
+
+\begin{example} Apply Mapper to some dataset $X$ of classes $A, A'$, color the output by labels $A_1, \dots , A_k, A_1', \dots , A_{k'}'$ and see what it shows.
+\end{example}
+
+\begin{example} (model evaluation) Apply Mapper to some dataset $X$ of class $A$, color the output by true labels and color it by predicted labels. Where the coloring schemes disagree is where the classifier does poorly.
+\end{example}
+
+\begin{example} (model creation) Apply Mapper to some dataset $X$ of class $A$, divide the output into regions and create local models for them.
+\end{example}
+
+\section{Notes to Self}
+\begin{itemize}
+\item the geometric shape mentioned in the introduction depends on a choice of a notion of liner/dissimilarity/similarity between the data points. Fortunately, TDA methods will usually produce something useful with just about any decent choice.
+\item how other clustering schemes than single linkage make a difference in Mapper.
+\item how to incorporate labels in TDA methods.
+\item more applications of TDA methods to machine learning.
+\item more methods in TDA.
+\item how to apply methods in algebraic geometry to data science, especially coordinate ring, function field, stalk.
+\end{itemize}
+
+
+\newpage
+\begin{bibdiv}
+\begin{biblist}
+\bibselect{references}
+\end{biblist}
+\end{bibdiv}
+
+\end{document}

@@ -1,8 +1,25 @@
+from typing import Dict, List, NamedTuple
+
 from pydantic import BaseModel
 from torch import Tensor
 from torch.nn import Linear, Module, ReLU, Softmax
 
 from machine_learning.strings import adam_str
+
+
+class Complex_(NamedTuple):
+    """
+    * represents 1-skeleton of topological data analysis Mapper complex
+    * is rendered as Python d3graph.d3graph or R networkD3.forceNetwork
+    """
+
+    vertices: Dict[str, List[int]]
+    vertex_IDs: List[str]
+    vertex_levels: List[int]
+    vertex_sizes: List[int]
+    edge_sources: List[int]
+    edge_targets: List[int]
+    edge_values: List[int]
 
 
 class OptimizerConfigs(BaseModel):
