@@ -196,8 +196,8 @@ def regularizer(  # type: ignore
 def train_epoch(
     model: Module,
     data_loader: DataLoader,
-    criterion: Module,
     optimizer: Optimizer,
+    criterion: Optional[Module] = None,
     regularizer_name: str = "",
     lamda: float = 0.0,
 ) -> float:
@@ -205,21 +205,26 @@ def train_epoch(
     trains model against each batch (X, Y) in data loader
     :param model: model
     :param data_loader: data loader
-    :param criterion: such as BCELoss
     :param optimizer: such as Adam
+    :param criterion: such as BCELoss
     :param regularizer_name: such as "l1"
     :param lamda: regularizer coefficient
     :return: average loss across all samples in data loader
     """
     model.train()
-    epoch_loss = 0
+    epoch_loss = 0.0
     for X, Y in data_loader:
         X_hat = model(X)
-        batch_loss = (
-            criterion(X_hat, Y)
-            + model.loss
-            + regularizer(regularizer_name, model.parameters(), lamda)
-        )
+        if criterion is None:
+            batch_loss = model.loss + regularizer(
+                regularizer_name, model.parameters(), lamda
+            )
+        else:
+            batch_loss = (
+                criterion(X_hat, Y)
+                + model.loss
+                + regularizer(regularizer_name, model.parameters(), lamda)
+            )
         optimizer.zero_grad()
         batch_loss.backward()
         epoch_loss += batch_loss.item()
@@ -228,7 +233,9 @@ def train_epoch(
     return avg_loss
 
 
-def val_epoch(model: Module, data_loader: DataLoader, criterion: Module) -> float:
+def val_epoch(
+    model: Module, data_loader: DataLoader, criterion: Optional[Module] = None
+) -> float:
     """
     validates model against each batch (X, Y) in data loader
     :param model: model
@@ -237,11 +244,14 @@ def val_epoch(model: Module, data_loader: DataLoader, criterion: Module) -> floa
     :return: average loss across all samples in data loader
     """
     model.eval()
-    epoch_loss = 0
+    epoch_loss = 0.0
     with torch.no_grad():
         for X, Y in data_loader:
             X_hat = model(X)
-            batch_loss = criterion(X_hat, Y) + model.loss
+            if criterion is None:
+                batch_loss = model.loss
+            else:
+                batch_loss = criterion(X_hat, Y) + model.loss
             epoch_loss += batch_loss.item()
     avg_loss = epoch_loss / len(data_loader.dataset)
     return avg_loss
@@ -252,9 +262,9 @@ def train(
     model: VariationalAutoEncoder,
     X_train_loader: DataLoader,
     X_val_loader: DataLoader,
-    criterion: Module,
+    criterion: Optional[Module] = None,
     verbose: bool = False,
-    verbose_freq: int = 100,
+    verbose_freq: int = 1,
 ) -> Tuple[Optional[Dict], float, int]:
     """
     for each epoch in configs.n_epochs
@@ -287,7 +297,7 @@ def train(
     n_epochs_without_improvement = 0
     for i in range(configs.n_epochs):
         avg_train_loss = train_epoch(
-            model, X_train_loader, criterion, optimizer, regularizer_name, lamda
+            model, X_train_loader, optimizer, criterion, regularizer_name, lamda
         )
         avg_val_loss = val_epoch(model, X_val_loader, criterion)
 
