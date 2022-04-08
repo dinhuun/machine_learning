@@ -1,5 +1,6 @@
 bayesian-optimization
 d3graph
+gensim
 h5py
 hdbscan
 hyperopt
@@ -8,14 +9,17 @@ keras
 matplotlib
 more-itertools
 netron
+nltk
 numpy
 openpyxl
 optuna
 pandas
+pyLDAvis
 pydantic
 scikit-learn
 scipy
 seaborn
+spacy
 statsmodels
 tensorflow
 torch
