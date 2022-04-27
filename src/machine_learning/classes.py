@@ -38,6 +38,14 @@ class Person:
         self.age = age
 
 
+class Point(NamedTuple):
+    """
+    a point (x, y) on a plane
+    """
+    x: float = 0.0
+    y: float = 0.0
+
+
 class TinyModel(Module):
     """
     a tiny PyTorch model for tests
