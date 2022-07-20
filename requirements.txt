@@ -24,4 +24,5 @@ statsmodels
 tensorflow
 torch
 torchvision
+transformers
 xgboost
