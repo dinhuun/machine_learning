@@ -1,3 +1,5 @@
+import os
+
 import torch
 from PIL.Image import Image
 
@@ -8,7 +10,9 @@ from machine_learning.utils.utils_mnist import (
     load_mnist_sets,
 )
 
-dirpath = "~/Dinh/machine_learning/notebooks/data_pytorch_mnist"
+
+current_dirpath = os.path.dirname(__file__)
+dirpath = os.path.join(current_dirpath, "../../../notebooks/data/pytorch_mnist")
 batch_size = 256
 train_set_size = 60000
 test_set_size = 10000
