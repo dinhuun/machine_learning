@@ -12,13 +12,14 @@ from machine_learning.strings import (
     sigmoid_str,
     state_dict_str,
 )
-from machine_learning.utils.utils_nn import init_activation
+from machine_learning.utils.utils_networks import init_activation
 
 
 class FeedforwardCoderConfigs(BaseModel):
     """
     configs for Feedforward encoder, decoder
     """
+
     x_dim: int
     z_dim: int
     h_dims: Optional[List[int]]
@@ -32,6 +33,7 @@ class FeedforwardAutoencoder(Module):
     """
     a feedforward autoencoder
     """
+
     def __init__(
         self,
         encoder_configs: FeedforwardCoderConfigs,

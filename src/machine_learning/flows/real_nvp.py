@@ -7,7 +7,7 @@ from torch.distributions.distribution import Distribution
 from torch.nn import Linear, Module, ModuleList, Sequential, Tanh
 
 from machine_learning.strings import leaky_relu_str
-from machine_learning.utils.utils_nn import init_activation
+from machine_learning.utils.utils_networks import init_activation
 
 
 class ScaleTranslate(Module):

@@ -37,7 +37,7 @@ from machine_learning.strings import (
     swish_str,
     tanh_str,
 )
-from machine_learning.utils.utils_nn import (
+from machine_learning.utils.utils_networks import (
     init_activation,
     init_loss,
     init_optimizer,

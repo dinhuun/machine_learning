@@ -19,7 +19,11 @@ from machine_learning.strings import (
     n_features_str,
     state_dict_str,
 )
-from machine_learning.utils.utils_nn import init_activation, init_loss, init_optimizer
+from machine_learning.utils.utils_networks import (
+    init_activation,
+    init_loss,
+    init_optimizer,
+)
 
 
 class ModelConfigs(BaseModel):
