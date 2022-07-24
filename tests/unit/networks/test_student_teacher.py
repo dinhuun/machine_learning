@@ -3,7 +3,7 @@ import tensorflow as tf
 from keras.utils.layer_utils import count_params
 from tensorflow import keras
 
-from machine_learning.distillers.student_teacher import (
+from machine_learning.networks.student_teacher import (
     StudentTeacher,
     init_student,
     init_teacher,
