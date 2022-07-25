@@ -47,3 +47,6 @@ same_str = "same"
 label_str = "label"
 level_str = "level"
 range_str = "range"
+
+generator_str = "generator"
+discriminator_str = "discriminator"
